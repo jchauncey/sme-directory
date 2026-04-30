@@ -33,6 +33,13 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Prisma local SQLite database (migrations stay committed)
+/prisma/dev.db
+/prisma/dev.db-journal
+
+# Allow committed env template
+!.env.example
+
 # vercel
 .vercel
 

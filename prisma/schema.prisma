@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  member
+  moderator
+  owner
+}
+
+enum MembershipStatus {
+  pending
+  approved
+  rejected
+}
+
+enum QuestionStatus {
+  open
+  answered
+}
+
+enum TargetType {
+  question
+  answer
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String?   @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  memberships   Membership[]
+  questions     Question[]
+  answers       Answer[]
+  votes         Vote[]
+  favorites     Favorite[]
+  notifications Notification[]
+  createdGroups Group[]        @relation("GroupCreator")
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  autoApprove Boolean  @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy   User         @relation("GroupCreator", fields: [createdById], references: [id])
+  memberships Membership[]
+  questions   Question[]
+
+  @@index([createdById])
+}
+
+model Membership {
+  id        String           @id @default(cuid())
+  userId    String
+  groupId   String
+  role      Role             @default(member)
+  status    MembershipStatus @default(pending)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@index([groupId])
+}
+
+model Question {
+  id               String         @id @default(cuid())
+  groupId          String
+  authorId         String
+  title            String
+  body             String
+  status           QuestionStatus @default(open)
+  acceptedAnswerId String?        @unique
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  group          Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  author         User     @relation(fields: [authorId], references: [id])
+  answers        Answer[] @relation("QuestionAnswers")
+  acceptedAnswer Answer?  @relation("AcceptedAnswer", fields: [acceptedAnswerId], references: [id], onDelete: SetNull)
+
+  @@index([groupId])
+  @@index([authorId])
+}
+
+model Answer {
+  id         String   @id @default(cuid())
+  questionId String
+  authorId   String
+  body       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  question            Question  @relation("QuestionAnswers", fields: [questionId], references: [id], onDelete: Cascade)
+  author              User      @relation(fields: [authorId], references: [id])
+  acceptedForQuestion Question? @relation("AcceptedAnswer")
+
+  @@index([questionId])
+  @@index([authorId])
+}
+
+model Vote {
+  id         String     @id @default(cuid())
+  userId     String
+  targetType TargetType
+  targetId   String
+  value      Int
+  createdAt  DateTime   @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetType, targetId])
+  @@index([targetType, targetId])
+}
+
+model Favorite {
+  id         String     @id @default(cuid())
+  userId     String
+  targetType TargetType
+  targetId   String
+  createdAt  DateTime   @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetType, targetId])
+  @@index([targetType, targetId])
+}
+
+// payload is JSON-as-string for SQLite portability — Prisma's Json type
+// is not supported on SQLite. Revisit when migrating to Postgres.
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  payload   String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
