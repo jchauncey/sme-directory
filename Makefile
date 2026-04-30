@@ -48,14 +48,14 @@ reset: ## Remove build artifacts AND node_modules
 
 # --- Database (wired up in #2: Prisma + SQLite) ---
 
-db-migrate: ## Apply Prisma migrations (TODO: #2)
-	@echo "Not yet implemented — see issue #2 (Prisma + SQLite schema)"
+db-migrate: install ## Apply Prisma migrations
+	npm run db:migrate
 
-db-reset: ## Reset and re-seed the dev database (TODO: #2)
-	@echo "Not yet implemented — see issue #2 (Prisma + SQLite schema)"
+db-reset: install ## Reset the dev database (DESTRUCTIVE — wipes data)
+	npm run db:reset
 
 db-seed: ## Seed the dev database (TODO: #17)
 	@echo "Not yet implemented — see issue #17 (seed data and dev fixtures)"
 
-db-studio: ## Open Prisma Studio (TODO: #2)
-	@echo "Not yet implemented — see issue #2 (Prisma + SQLite schema)"
+db-studio: install ## Open Prisma Studio
+	npm run db:studio
