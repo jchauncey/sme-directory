@@ -1,22 +1,35 @@
 import Link from "next/link";
+import { SearchIcon } from "lucide-react";
+
 import { UserMenu } from "@/components/auth/user-menu";
+import { ModeToggle } from "@/components/mode-toggle";
+import { Button } from "@/components/ui/button";
 
 export function SiteHeader() {
   return (
-    <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+    <header className="border-b border-border bg-background">
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4">
         <Link href="/" className="font-semibold tracking-tight">
           SME Directory
         </Link>
-        <nav className="flex items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400">
-          <Link href="/groups" className="hover:text-zinc-950 dark:hover:text-zinc-50">
-            Groups
-          </Link>
-          <Link href="/search" className="hover:text-zinc-950 dark:hover:text-zinc-50">
-            Search
-          </Link>
-          <UserMenu />
-        </nav>
+        <div className="flex flex-1 items-center justify-end gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden w-full max-w-xs justify-start gap-2 text-muted-foreground md:flex"
+            render={<Link href="/search" />}
+          >
+            <SearchIcon className="size-3.5" />
+            <span>Search…</span>
+          </Button>
+          <nav className="flex items-center gap-3 text-sm">
+            <Link href="/groups" className="text-muted-foreground hover:text-foreground">
+              Groups
+            </Link>
+            <ModeToggle />
+            <UserMenu />
+          </nav>
+        </div>
       </div>
     </header>
   );
