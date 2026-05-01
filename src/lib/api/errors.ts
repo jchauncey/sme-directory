@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AuthorizationError, NotFoundError } from "@/lib/memberships";
+import { AuthorizationError, ConflictError, NotFoundError } from "@/lib/memberships";
 import { SlugConflictError } from "@/lib/groups";
 
 export function unauthorized(): Response {
@@ -28,6 +28,9 @@ export function errorToResponse(err: unknown): Response {
   }
   if (err instanceof NotFoundError) {
     return Response.json({ error: "NotFound", message: err.message }, { status: 404 });
+  }
+  if (err instanceof ConflictError) {
+    return Response.json({ error: "Conflict", message: err.message }, { status: 409 });
   }
   if (err instanceof z.ZodError) {
     return validationFailed(err);
