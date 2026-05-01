@@ -13,9 +13,7 @@ function fieldError(state: CreateGroupState, path: string): string | undefined {
 export function NewGroupForm() {
   const [state, formAction, isPending] = useActionState(createGroupAction, initialState);
   const [name, setName] = useState(state.values?.name ?? "");
-  const [slugOverride, setSlugOverride] = useState<string | null>(
-    state.values?.slug ?? null,
-  );
+  const [slugOverride, setSlugOverride] = useState<string | null>(state.values?.slug ?? null);
   const slug = slugOverride ?? slugify(name);
 
   return (

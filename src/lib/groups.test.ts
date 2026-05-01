@@ -15,13 +15,8 @@ const testDbPath = path.join(os.tmpdir(), `sme-groups-test-${Date.now()}.db`);
 process.env["DATABASE_URL"] = `file:${testDbPath}`;
 
 const { db } = await import("./db");
-const {
-  createGroup,
-  getGroupBySlug,
-  getGroupBySlugOrThrow,
-  updateGroup,
-  SlugConflictError,
-} = await import("./groups");
+const { createGroup, getGroupBySlug, getGroupBySlugOrThrow, updateGroup, SlugConflictError } =
+  await import("./groups");
 const { AuthorizationError, NotFoundError } = await import("./memberships");
 
 beforeAll(async () => {
@@ -134,15 +129,15 @@ describe("updateGroup", () => {
     const stranger = await makeUser("stranger");
     const slug = `forbid-${Date.now()}`;
     await createGroup({ name: "F", slug }, owner.id);
-    await expect(
-      updateGroup(slug, { name: "Hacked" }, stranger.id),
-    ).rejects.toBeInstanceOf(AuthorizationError);
+    await expect(updateGroup(slug, { name: "Hacked" }, stranger.id)).rejects.toBeInstanceOf(
+      AuthorizationError,
+    );
   });
 
   it("throws NotFoundError for an unknown slug", async () => {
     const owner = await makeUser("nf");
-    await expect(
-      updateGroup("does-not-exist", { name: "x" }, owner.id),
-    ).rejects.toBeInstanceOf(NotFoundError);
+    await expect(updateGroup("does-not-exist", { name: "x" }, owner.id)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
   });
 });

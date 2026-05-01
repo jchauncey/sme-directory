@@ -18,10 +18,7 @@ export type GroupWithOwner = Group & {
   createdBy: Pick<User, "id" | "email" | "name">;
 };
 
-export async function createGroup(
-  input: CreateGroupInput,
-  creatorUserId: string,
-): Promise<Group> {
+export async function createGroup(input: CreateGroupInput, creatorUserId: string): Promise<Group> {
   try {
     return await db.$transaction(async (tx) => {
       const group = await tx.group.create({

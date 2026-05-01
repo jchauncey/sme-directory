@@ -1,9 +1,16 @@
 import { z } from "zod";
 import { SLUG_RE, SLUG_MAX_LENGTH } from "@/lib/slug";
 
-export const groupNameSchema = z.string().trim().min(2, "Name must be at least 2 characters.").max(80, "Name must be at most 80 characters.");
+export const groupNameSchema = z
+  .string()
+  .trim()
+  .min(2, "Name must be at least 2 characters.")
+  .max(80, "Name must be at most 80 characters.");
 
-export const groupDescriptionSchema = z.string().trim().max(2000, "Description must be at most 2000 characters.");
+export const groupDescriptionSchema = z
+  .string()
+  .trim()
+  .max(2000, "Description must be at most 2000 characters.");
 
 export const groupSlugSchema = z
   .string()

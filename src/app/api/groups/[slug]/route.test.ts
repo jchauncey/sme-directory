@@ -108,10 +108,7 @@ describe("PATCH /api/groups/[slug]", () => {
 
   it("returns 400 on empty body (no fields provided)", async () => {
     await auth.signIn(`empty-${Date.now()}@example.com`);
-    const res = await PATCH(
-      jsonReq("http://x/api/groups/whatever", "PATCH", {}),
-      ctx("whatever"),
-    );
+    const res = await PATCH(jsonReq("http://x/api/groups/whatever", "PATCH", {}), ctx("whatever"));
     expect(res.status).toBe(400);
   });
 
@@ -144,7 +141,10 @@ describe("PATCH /api/groups/[slug]", () => {
     await auth.signIn(ownerEmail);
     const ownerSess = (await auth.getSession())!;
     const slug = `update-${Date.now()}`;
-    await createGroup({ name: "Old", slug, description: "old", autoApprove: false }, ownerSess.user.id);
+    await createGroup(
+      { name: "Old", slug, description: "old", autoApprove: false },
+      ownerSess.user.id,
+    );
     const res = await PATCH(
       jsonReq(`http://x/api/groups/${slug}`, "PATCH", {
         description: "new",
