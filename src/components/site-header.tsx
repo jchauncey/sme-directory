@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UserMenu } from "@/components/auth/user-menu";
 
 export function SiteHeader() {
   return (
@@ -14,7 +15,7 @@ export function SiteHeader() {
           <Link href="/search" className="hover:text-zinc-950 dark:hover:text-zinc-50">
             Search
           </Link>
-          <span className="text-zinc-400 dark:text-zinc-600">Sign in</span>
+          <UserMenu />
         </nav>
       </div>
     </header>
