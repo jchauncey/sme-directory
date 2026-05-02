@@ -3,6 +3,7 @@ import { errorToResponse, unauthorized, validationFailed } from "@/lib/api/error
 import { getGroupBySlugOrThrow } from "@/lib/groups";
 import { assertApprovedMember } from "@/lib/memberships";
 import { createQuestion, listQuestionsForGroup } from "@/lib/questions";
+import { notifyQuestionCreated } from "@/lib/notifications";
 import {
   createQuestionSchema,
   questionListQuerySchema,
@@ -32,6 +33,11 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
     const group = await getGroupBySlugOrThrow(slug);
     await assertApprovedMember(group.id, session.user.id);
     const question = await createQuestion(parsed.data, group.id, session.user.id);
+    try {
+      await notifyQuestionCreated(question, group, session.user.name);
+    } catch (notifyErr) {
+      console.error("notifyQuestionCreated failed:", notifyErr);
+    }
     return Response.json({ question }, { status: 201 });
   } catch (err) {
     return errorToResponse(err);

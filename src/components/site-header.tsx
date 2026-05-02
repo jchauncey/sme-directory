@@ -3,6 +3,7 @@ import { SearchIcon } from "lucide-react";
 
 import { UserMenu } from "@/components/auth/user-menu";
 import { ModeToggle } from "@/components/mode-toggle";
+import { NotificationBell } from "@/components/notification-bell";
 import { Button } from "@/components/ui/button";
 
 export function SiteHeader() {
@@ -27,6 +28,7 @@ export function SiteHeader() {
               Groups
             </Link>
             <ModeToggle />
+            <NotificationBell />
             <UserMenu />
           </nav>
         </div>
