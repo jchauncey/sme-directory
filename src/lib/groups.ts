@@ -53,6 +53,58 @@ export async function createGroup(input: CreateGroupInput, creatorUserId: string
   }
 }
 
+export type GroupListItem = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  memberCount: number;
+  createdAt: Date;
+};
+
+export type ListGroupsSort = "newest" | "members";
+
+export async function listGroups(opts: { sort: ListGroupsSort }): Promise<GroupListItem[]> {
+  const [groups, counts] = await Promise.all([
+    db.group.findMany({
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        description: true,
+        createdAt: true,
+      },
+    }),
+    db.membership.groupBy({
+      by: ["groupId"],
+      where: { status: "approved" },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const countByGroupId = new Map(counts.map((c) => [c.groupId, c._count._all]));
+
+  const items: GroupListItem[] = groups.map((g) => ({
+    id: g.id,
+    slug: g.slug,
+    name: g.name,
+    description: g.description,
+    createdAt: g.createdAt,
+    memberCount: countByGroupId.get(g.id) ?? 0,
+  }));
+
+  if (opts.sort === "members") {
+    items.sort((a, b) => {
+      if (b.memberCount !== a.memberCount) return b.memberCount - a.memberCount;
+      return b.createdAt.getTime() - a.createdAt.getTime();
+    });
+  } else {
+    items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  return items;
+}
+
 export async function getGroupBySlug(slug: string): Promise<GroupWithOwner | null> {
   return db.group.findUnique({
     where: { slug },

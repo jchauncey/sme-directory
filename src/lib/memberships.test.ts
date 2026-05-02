@@ -21,13 +21,22 @@ const {
   assertOwnerOrModerator,
   AuthorizationError,
   ConflictError,
+  countApprovedMembers,
   getMembership,
+  getUserMembershipStatus,
+  InvalidSuccessorError,
   isOwner,
   isOwnerOrModerator,
+  leaveGroup,
+  listApprovedMembers,
   listPendingApplications,
+  listSuccessorCandidates,
+  NotAMemberError,
   NotFoundError,
   removeMembership,
   setMembershipStatus,
+  SoleOwnerCannotLeaveError,
+  transferOwnershipAndLeave,
 } = await import("./memberships");
 
 beforeAll(async () => {
@@ -380,5 +389,173 @@ describe("listPendingApplications", () => {
     const ids = pending.map((m) => m.userId).sort();
     expect(ids).toEqual([a.id, b.id].sort());
     expect(pending[0]?.user).toHaveProperty("email");
+  });
+});
+
+describe("leaveGroup", () => {
+  it("removes the membership for a regular approved member", async () => {
+    const { group } = await makeGroup(next("leave-member"));
+    const user = await makeUser("leaver");
+    await db.membership.create({
+      data: { groupId: group.id, userId: user.id, role: "member", status: "approved" },
+    });
+    await leaveGroup(group.id, user.id);
+    expect(await getMembership(group.id, user.id)).toBeNull();
+  });
+
+  it("throws NotAMemberError when caller has no membership", async () => {
+    const { group } = await makeGroup(next("leave-none"));
+    const user = await makeUser("ghost-leave");
+    await expect(leaveGroup(group.id, user.id)).rejects.toBeInstanceOf(NotAMemberError);
+  });
+
+  it("throws SoleOwnerCannotLeaveError when caller is the only approved owner", async () => {
+    const { owner, group } = await makeGroup(next("leave-sole"));
+    await expect(leaveGroup(group.id, owner.id)).rejects.toBeInstanceOf(
+      SoleOwnerCannotLeaveError,
+    );
+  });
+
+  it("allows an owner to leave when another approved owner exists", async () => {
+    const { owner, group } = await makeGroup(next("leave-coowner"));
+    const co = await makeUser("co");
+    await db.membership.create({
+      data: { groupId: group.id, userId: co.id, role: "owner", status: "approved" },
+    });
+    await leaveGroup(group.id, owner.id);
+    expect(await getMembership(group.id, owner.id)).toBeNull();
+    expect(await getMembership(group.id, co.id)).not.toBeNull();
+  });
+});
+
+describe("transferOwnershipAndLeave", () => {
+  it("promotes successor to owner and removes caller", async () => {
+    const { owner, group } = await makeGroup(next("xfer"));
+    const successor = await makeUser("succ");
+    await db.membership.create({
+      data: { groupId: group.id, userId: successor.id, role: "member", status: "approved" },
+    });
+    await transferOwnershipAndLeave(group.id, owner.id, successor.id);
+    expect(await getMembership(group.id, owner.id)).toBeNull();
+    const promoted = await getMembership(group.id, successor.id);
+    expect(promoted!.role).toBe("owner");
+    expect(promoted!.status).toBe("approved");
+  });
+
+  it("throws InvalidSuccessorError when successor is not approved", async () => {
+    const { owner, group } = await makeGroup(next("xfer-pending"));
+    const successor = await makeUser("succ");
+    await db.membership.create({
+      data: { groupId: group.id, userId: successor.id, role: "member", status: "pending" },
+    });
+    await expect(
+      transferOwnershipAndLeave(group.id, owner.id, successor.id),
+    ).rejects.toBeInstanceOf(InvalidSuccessorError);
+  });
+
+  it("throws InvalidSuccessorError when successor is the same as caller", async () => {
+    const { owner, group } = await makeGroup(next("xfer-self"));
+    await expect(
+      transferOwnershipAndLeave(group.id, owner.id, owner.id),
+    ).rejects.toBeInstanceOf(InvalidSuccessorError);
+  });
+
+  it("throws AuthorizationError when caller is not an approved owner", async () => {
+    const { group } = await makeGroup(next("xfer-notowner"));
+    const member = await makeUser("memb");
+    await db.membership.create({
+      data: { groupId: group.id, userId: member.id, role: "member", status: "approved" },
+    });
+    const other = await makeUser("other");
+    await db.membership.create({
+      data: { groupId: group.id, userId: other.id, role: "member", status: "approved" },
+    });
+    await expect(
+      transferOwnershipAndLeave(group.id, member.id, other.id),
+    ).rejects.toBeInstanceOf(AuthorizationError);
+  });
+
+  it("does not modify state when validation fails (atomic)", async () => {
+    const { owner, group } = await makeGroup(next("xfer-atomic"));
+    const successor = await makeUser("succ");
+    await db.membership.create({
+      data: { groupId: group.id, userId: successor.id, role: "member", status: "rejected" },
+    });
+    await expect(
+      transferOwnershipAndLeave(group.id, owner.id, successor.id),
+    ).rejects.toBeInstanceOf(InvalidSuccessorError);
+    // owner still owner, successor unchanged
+    const o = await getMembership(group.id, owner.id);
+    expect(o!.role).toBe("owner");
+    const s = await getMembership(group.id, successor.id);
+    expect(s!.role).toBe("member");
+    expect(s!.status).toBe("rejected");
+  });
+});
+
+describe("getUserMembershipStatus / countApprovedMembers", () => {
+  it("getUserMembershipStatus returns null when no membership exists", async () => {
+    const { group } = await makeGroup(next("status-none"));
+    const user = await makeUser("ghost-status");
+    expect(await getUserMembershipStatus(group.id, user.id)).toBeNull();
+  });
+
+  it("getUserMembershipStatus returns status and role", async () => {
+    const { group } = await makeGroup(next("status"));
+    const user = await makeUser("u");
+    await db.membership.create({
+      data: { groupId: group.id, userId: user.id, role: "moderator", status: "approved" },
+    });
+    expect(await getUserMembershipStatus(group.id, user.id)).toEqual({
+      role: "moderator",
+      status: "approved",
+    });
+  });
+
+  it("countApprovedMembers excludes pending and rejected", async () => {
+    const { group } = await makeGroup(next("count"));
+    const u1 = await makeUser("a");
+    const u2 = await makeUser("b");
+    const u3 = await makeUser("c");
+    await db.membership.create({
+      data: { groupId: group.id, userId: u1.id, role: "member", status: "approved" },
+    });
+    await db.membership.create({
+      data: { groupId: group.id, userId: u2.id, role: "member", status: "pending" },
+    });
+    await db.membership.create({
+      data: { groupId: group.id, userId: u3.id, role: "member", status: "rejected" },
+    });
+    // owner + u1
+    expect(await countApprovedMembers(group.id)).toBe(2);
+  });
+});
+
+describe("listApprovedMembers / listSuccessorCandidates", () => {
+  it("listApprovedMembers returns approved members up to limit", async () => {
+    const { owner, group } = await makeGroup(next("list-approved"));
+    const u1 = await makeUser("a");
+    await db.membership.create({
+      data: { groupId: group.id, userId: u1.id, role: "member", status: "approved" },
+    });
+    const u2 = await makeUser("b");
+    await db.membership.create({
+      data: { groupId: group.id, userId: u2.id, role: "member", status: "pending" },
+    });
+    const list = await listApprovedMembers(group.id, 5);
+    const userIds = list.map((m) => m.userId);
+    expect(userIds).toContain(owner.id);
+    expect(userIds).toContain(u1.id);
+    expect(userIds).not.toContain(u2.id);
+  });
+
+  it("listSuccessorCandidates excludes the caller", async () => {
+    const { owner, group } = await makeGroup(next("succ"));
+    const u1 = await makeUser("a");
+    await db.membership.create({
+      data: { groupId: group.id, userId: u1.id, role: "member", status: "approved" },
+    });
+    const list = await listSuccessorCandidates(group.id, owner.id);
+    expect(list.map((m) => m.userId)).toEqual([u1.id]);
   });
 });

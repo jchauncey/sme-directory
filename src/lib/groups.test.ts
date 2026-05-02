@@ -15,8 +15,14 @@ const testDbPath = path.join(os.tmpdir(), `sme-groups-test-${Date.now()}.db`);
 process.env["DATABASE_URL"] = `file:${testDbPath}`;
 
 const { db } = await import("./db");
-const { createGroup, getGroupBySlug, getGroupBySlugOrThrow, updateGroup, SlugConflictError } =
-  await import("./groups");
+const {
+  createGroup,
+  getGroupBySlug,
+  getGroupBySlugOrThrow,
+  listGroups,
+  updateGroup,
+  SlugConflictError,
+} = await import("./groups");
 const { AuthorizationError, NotFoundError } = await import("./memberships");
 
 beforeAll(async () => {
@@ -139,5 +145,63 @@ describe("updateGroup", () => {
     await expect(updateGroup("does-not-exist", { name: "x" }, owner.id)).rejects.toBeInstanceOf(
       NotFoundError,
     );
+  });
+});
+
+describe("listGroups", () => {
+  it("returns groups newest-first when sort=newest", async () => {
+    const owner = await makeUser("ls-new");
+    const tag = `ls-newest-${Date.now()}`;
+    const a = await createGroup({ name: "A", slug: `${tag}-a` }, owner.id);
+    // Force a small gap so createdAt ordering is unambiguous on coarse clocks.
+    await new Promise((r) => setTimeout(r, 5));
+    const b = await createGroup({ name: "B", slug: `${tag}-b` }, owner.id);
+    const list = await listGroups({ sort: "newest" });
+    const indexA = list.findIndex((g) => g.id === a.id);
+    const indexB = list.findIndex((g) => g.id === b.id);
+    expect(indexB).toBeGreaterThanOrEqual(0);
+    expect(indexA).toBeGreaterThan(indexB);
+  });
+
+  it("counts only approved memberships", async () => {
+    const owner = await makeUser("ls-count");
+    const slug = `ls-count-${Date.now()}`;
+    const group = await createGroup({ name: "C", slug }, owner.id);
+    const m1 = await makeUser("ls-m1");
+    const m2 = await makeUser("ls-m2");
+    const m3 = await makeUser("ls-m3");
+    await db.membership.create({
+      data: { groupId: group.id, userId: m1.id, role: "member", status: "approved" },
+    });
+    await db.membership.create({
+      data: { groupId: group.id, userId: m2.id, role: "member", status: "pending" },
+    });
+    await db.membership.create({
+      data: { groupId: group.id, userId: m3.id, role: "member", status: "rejected" },
+    });
+    const list = await listGroups({ sort: "newest" });
+    const found = list.find((g) => g.id === group.id);
+    expect(found).toBeDefined();
+    // owner + m1 = 2
+    expect(found!.memberCount).toBe(2);
+  });
+
+  it("orders by member count desc when sort=members", async () => {
+    const owner = await makeUser("ls-sort");
+    const tag = `ls-sort-${Date.now()}`;
+    const small = await createGroup({ name: "Small", slug: `${tag}-s` }, owner.id);
+    const big = await createGroup({ name: "Big", slug: `${tag}-b` }, owner.id);
+    for (let i = 0; i < 3; i++) {
+      const u = await makeUser(`ls-bigm-${i}`);
+      await db.membership.create({
+        data: { groupId: big.id, userId: u.id, role: "member", status: "approved" },
+      });
+    }
+    const list = await listGroups({ sort: "members" });
+    const indexBig = list.findIndex((g) => g.id === big.id);
+    const indexSmall = list.findIndex((g) => g.id === small.id);
+    expect(indexBig).toBeGreaterThanOrEqual(0);
+    expect(indexSmall).toBeGreaterThanOrEqual(0);
+    expect(indexBig).toBeLessThan(indexSmall);
   });
 });

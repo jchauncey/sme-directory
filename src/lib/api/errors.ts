@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { AuthorizationError, ConflictError, NotFoundError } from "@/lib/memberships";
+import {
+  AuthorizationError,
+  ConflictError,
+  InvalidSuccessorError,
+  NotAMemberError,
+  NotFoundError,
+  SoleOwnerCannotLeaveError,
+} from "@/lib/memberships";
 import { SlugConflictError } from "@/lib/groups";
 
 export function unauthorized(): Response {
@@ -31,6 +38,15 @@ export function errorToResponse(err: unknown): Response {
   }
   if (err instanceof ConflictError) {
     return Response.json({ error: "Conflict", message: err.message }, { status: 409 });
+  }
+  if (err instanceof NotAMemberError) {
+    return Response.json({ error: "NotAMember", message: err.message }, { status: 404 });
+  }
+  if (err instanceof SoleOwnerCannotLeaveError) {
+    return Response.json({ error: "SoleOwner", message: err.message }, { status: 409 });
+  }
+  if (err instanceof InvalidSuccessorError) {
+    return Response.json({ error: "InvalidSuccessor", message: err.message }, { status: 422 });
   }
   if (err instanceof z.ZodError) {
     return validationFailed(err);
