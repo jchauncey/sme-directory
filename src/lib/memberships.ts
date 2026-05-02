@@ -26,6 +26,32 @@ export class ConflictError extends Error {
   }
 }
 
+export class NotAMemberError extends Error {
+  readonly code = "NOT_A_MEMBER" as const;
+  constructor(message = "You are not a member of this group.") {
+    super(message);
+    this.name = "NotAMemberError";
+  }
+}
+
+export class SoleOwnerCannotLeaveError extends Error {
+  readonly code = "SOLE_OWNER" as const;
+  constructor(
+    message = "You're the only owner. Promote another member to owner before leaving.",
+  ) {
+    super(message);
+    this.name = "SoleOwnerCannotLeaveError";
+  }
+}
+
+export class InvalidSuccessorError extends Error {
+  readonly code = "INVALID_SUCCESSOR" as const;
+  constructor(message = "The chosen successor is not an approved member of this group.") {
+    super(message);
+    this.name = "InvalidSuccessorError";
+  }
+}
+
 export async function getMembership(groupId: string, userId: string): Promise<Membership | null> {
   return db.membership.findUnique({
     where: { userId_groupId: { userId, groupId } },
@@ -134,5 +160,123 @@ export async function listPendingApplications(groupId: string): Promise<PendingA
     where: { groupId, status: "pending" },
     include: { user: { select: { id: true, email: true, name: true } } },
     orderBy: { createdAt: "asc" },
+  });
+}
+
+export type UserMembershipState = Pick<Membership, "status" | "role">;
+
+export async function getUserMembershipStatus(
+  groupId: string,
+  userId: string,
+): Promise<UserMembershipState | null> {
+  const m = await getMembership(groupId, userId);
+  if (!m) return null;
+  return { status: m.status, role: m.role };
+}
+
+export async function countApprovedMembers(groupId: string): Promise<number> {
+  return db.membership.count({
+    where: { groupId, status: "approved" },
+  });
+}
+
+export type ApprovedMember = {
+  userId: string;
+  name: string | null;
+  email: string | null;
+  role: Membership["role"];
+};
+
+export async function listApprovedMembers(
+  groupId: string,
+  limit: number,
+): Promise<ApprovedMember[]> {
+  const rows = await db.membership.findMany({
+    where: { groupId, status: "approved" },
+    orderBy: { createdAt: "asc" },
+    take: limit,
+    include: { user: { select: { id: true, name: true, email: true } } },
+  });
+  return rows.map((m) => ({
+    userId: m.user.id,
+    name: m.user.name,
+    email: m.user.email,
+    role: m.role,
+  }));
+}
+
+export async function listSuccessorCandidates(
+  groupId: string,
+  excludingUserId: string,
+): Promise<ApprovedMember[]> {
+  const rows = await db.membership.findMany({
+    where: {
+      groupId,
+      status: "approved",
+      userId: { not: excludingUserId },
+    },
+    orderBy: [{ createdAt: "asc" }],
+    include: { user: { select: { id: true, name: true, email: true } } },
+  });
+  return rows.map((m) => ({
+    userId: m.user.id,
+    name: m.user.name,
+    email: m.user.email,
+    role: m.role,
+  }));
+}
+
+export async function leaveGroup(groupId: string, userId: string): Promise<void> {
+  await db.$transaction(async (tx) => {
+    const membership = await tx.membership.findUnique({
+      where: { userId_groupId: { userId, groupId } },
+    });
+    if (!membership) throw new NotAMemberError();
+    if (membership.role === "owner" && membership.status === "approved") {
+      const otherOwners = await tx.membership.count({
+        where: {
+          groupId,
+          role: "owner",
+          status: "approved",
+          userId: { not: userId },
+        },
+      });
+      if (otherOwners === 0) throw new SoleOwnerCannotLeaveError();
+    }
+    await tx.membership.delete({
+      where: { userId_groupId: { userId, groupId } },
+    });
+  });
+}
+
+export async function transferOwnershipAndLeave(
+  groupId: string,
+  fromUserId: string,
+  toUserId: string,
+): Promise<void> {
+  if (fromUserId === toUserId) {
+    throw new InvalidSuccessorError("Successor must be a different user.");
+  }
+  await db.$transaction(async (tx) => {
+    const caller = await tx.membership.findUnique({
+      where: { userId_groupId: { userId: fromUserId, groupId } },
+    });
+    if (!caller) throw new NotAMemberError();
+    if (!(caller.role === "owner" && caller.status === "approved")) {
+      throw new AuthorizationError("Only an approved owner can transfer ownership.");
+    }
+    const successor = await tx.membership.findUnique({
+      where: { userId_groupId: { userId: toUserId, groupId } },
+    });
+    if (!successor || successor.status !== "approved") {
+      throw new InvalidSuccessorError();
+    }
+    await tx.membership.update({
+      where: { userId_groupId: { userId: toUserId, groupId } },
+      data: { role: "owner" },
+    });
+    await tx.membership.delete({
+      where: { userId_groupId: { userId: fromUserId, groupId } },
+    });
   });
 }

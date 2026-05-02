@@ -40,7 +40,15 @@ export function MembershipActions({ slug, isAuthenticated, currentUserId, member
   }
 
   if (membership?.role === "owner" && membership.status === "approved") {
-    return null;
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        render={<Link href={`/groups/${slug}/leave`} />}
+      >
+        Leave group
+      </Button>
+    );
   }
 
   async function apply() {
