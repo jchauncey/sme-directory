@@ -181,6 +181,21 @@ describe("POST /api/groups/[slug]/questions", () => {
     expect(json.question.title).toBe("How do I do X with Y?");
     expect(json.question.groupId).toBe(group.id);
     expect(json.question.authorId).toBe(memberSess.user.id);
+
+    // fan-out: owner is approved (auto-approve creates owner membership), member is the author
+    const ownerNotifs = await db.notification.findMany({
+      where: { userId: ownerSess.user.id },
+    });
+    expect(ownerNotifs).toHaveLength(1);
+    expect(ownerNotifs[0]!.type).toBe("question.created");
+    const payload = JSON.parse(ownerNotifs[0]!.payload);
+    expect(payload.questionId).toBe(json.question.id);
+    expect(payload.groupSlug).toBe(slug);
+
+    const authorNotifs = await db.notification.findMany({
+      where: { userId: memberSess.user.id },
+    });
+    expect(authorNotifs).toHaveLength(0);
   });
 });
 

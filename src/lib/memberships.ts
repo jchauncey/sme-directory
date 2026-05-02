@@ -216,6 +216,14 @@ export async function listApprovedMembers(
   }));
 }
 
+export async function listApprovedMemberIds(groupId: string): Promise<string[]> {
+  const rows = await db.membership.findMany({
+    where: { groupId, status: "approved" },
+    select: { userId: true },
+  });
+  return rows.map((r) => r.userId);
+}
+
 export async function listSuccessorCandidates(
   groupId: string,
   excludingUserId: string,
