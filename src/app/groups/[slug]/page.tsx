@@ -16,6 +16,7 @@ import {
   getMembership,
   listApprovedMembers,
 } from "@/lib/memberships";
+import { listQuestionsForGroup } from "@/lib/questions";
 import { MembershipActions } from "./membership-actions";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -30,19 +31,25 @@ function initials(name: string | null, email: string | null): string {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
+function authorLabel(a: { name: string | null; email: string | null }): string {
+  return a.name ?? a.email ?? "unknown";
+}
+
 export default async function GroupDetailPage({ params }: Props) {
   const { slug } = await params;
   const group = await getGroupBySlug(slug);
   if (!group) notFound();
 
   const session = await getSession();
-  const [memberCount, members, membership] = await Promise.all([
+  const [memberCount, members, membership, questions] = await Promise.all([
     countApprovedMembers(group.id),
     listApprovedMembers(group.id, MEMBER_PREVIEW_LIMIT),
     session ? getMembership(group.id, session.user.id) : Promise.resolve(null),
+    listQuestionsForGroup(group.id, { page: 1, per: 20 }),
   ]);
 
   const isOwner = membership?.role === "owner" && membership.status === "approved";
+  const isApproved = membership?.status === "approved";
   const memberLabel = memberCount === 1 ? "1 member" : `${memberCount} members`;
 
   return (
@@ -90,6 +97,15 @@ export default async function GroupDetailPage({ params }: Props) {
             currentUserId={session?.user.id ?? null}
             membership={membership ? { role: membership.role, status: membership.status } : null}
           />
+          {isApproved ? (
+            <Button
+              variant="default"
+              size="sm"
+              render={<Link href={`/groups/${group.slug}/ask`} />}
+            >
+              Ask a question
+            </Button>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -129,13 +145,31 @@ export default async function GroupDetailPage({ params }: Props) {
 
       <Card>
         <CardHeader className="border-b">
-          <CardTitle className="text-base">Recent questions</CardTitle>
-          <CardDescription>Q&amp;A coming in M3.</CardDescription>
+          <CardTitle className="text-base">
+            Questions {questions.total > 0 ? `(${questions.total})` : ""}
+          </CardTitle>
         </CardHeader>
-        <CardContent className="pt-2">
-          <p className="text-sm text-muted-foreground">
-            Once the question flow ships, the latest activity for this group will show up here.
-          </p>
+        <CardContent className="pt-4">
+          {questions.items.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No questions yet.
+              {isApproved ? " Be the first to ask one." : ""}
+            </p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {questions.items.map((q) => (
+                <li key={q.id} className="py-3 first:pt-0 last:pb-0">
+                  <Link href={`/q/${q.id}`} className="text-sm font-medium hover:underline">
+                    {q.title}
+                  </Link>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {authorLabel(q.author)} · {q.answerCount}{" "}
+                    {q.answerCount === 1 ? "answer" : "answers"} · Score {q.voteScore}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
     </div>

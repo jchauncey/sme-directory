@@ -81,6 +81,17 @@ export async function assertOwnerOrModerator(groupId: string, userId: string): P
   }
 }
 
+export async function isApprovedMember(groupId: string, userId: string): Promise<boolean> {
+  const m = await getMembership(groupId, userId);
+  return m?.status === "approved";
+}
+
+export async function assertApprovedMember(groupId: string, userId: string): Promise<void> {
+  if (!(await isApprovedMember(groupId, userId))) {
+    throw new AuthorizationError();
+  }
+}
+
 export async function applyToGroup(groupId: string, userId: string): Promise<Membership> {
   const group = await db.group.findUnique({
     where: { id: groupId },
