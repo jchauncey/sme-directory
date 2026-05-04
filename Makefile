@@ -2,14 +2,22 @@
 # Run `make` (no args) to see available targets.
 
 .DEFAULT_GOAL := help
-.PHONY: help install dev build start lint typecheck format format-check check clean reset \
-        db-migrate db-reset db-seed db-studio
+.PHONY: help setup install dev build start lint typecheck format format-check check clean reset \
+        db-migrate db-deploy db-reset db-seed db-studio
 
 NODE_MODULES := node_modules/.package-lock.json
 
 help: ## Show this help
 	@awk 'BEGIN { FS = ":.*##"; printf "Targets:\n" } \
 	  /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+
+setup: install .env db-deploy ## One-shot bootstrap (Conductor setup stage)
+
+.env:
+	@if [ ! -f .env ]; then \
+	  echo "Creating .env from .env.example"; \
+	  cp .env.example .env; \
+	fi
 
 $(NODE_MODULES): package.json package-lock.json
 	npm install
@@ -48,8 +56,11 @@ reset: ## Remove build artifacts AND node_modules
 
 # --- Database (wired up in #2: Prisma + SQLite) ---
 
-db-migrate: install ## Apply Prisma migrations
+db-migrate: install ## Apply Prisma migrations (interactive — dev)
 	npm run db:migrate
+
+db-deploy: install ## Apply committed Prisma migrations (non-interactive)
+	npx prisma migrate deploy
 
 db-reset: install ## Reset the dev database (DESTRUCTIVE — wipes data)
 	npm run db:reset
