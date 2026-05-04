@@ -7,6 +7,7 @@ import {
   isOwnerOrModerator,
 } from "@/lib/memberships";
 import { viewerVotesFor, voteScoresFor } from "@/lib/votes";
+import { viewerFavoritesFor } from "@/lib/favorites";
 import type { CreateQuestionInput } from "@/lib/validation/questions";
 
 export type QuestionAuthor = Pick<User, "id" | "email" | "name">;
@@ -35,10 +36,12 @@ export type QuestionDetail = Question & {
       author: QuestionAuthor;
       voteScore: number;
       viewerVote: 1 | null;
+      isFavorited: boolean;
     }
   >;
   voteScore: number;
   viewerVote: 1 | null;
+  isFavorited: boolean;
 };
 
 export async function createQuestion(
@@ -115,17 +118,29 @@ export async function getQuestionById(
 
   const answerIds = q.answers.map((a) => a.id);
 
-  const [questionScores, answerScores, viewerQuestionVotes, viewerAnswerVotes] =
-    await Promise.all([
-      voteScoresFor("question", [q.id]),
-      voteScoresFor("answer", answerIds),
-      viewerUserId
-        ? viewerVotesFor("question", [q.id], viewerUserId)
-        : Promise.resolve(new Map<string, 1>()),
-      viewerUserId
-        ? viewerVotesFor("answer", answerIds, viewerUserId)
-        : Promise.resolve(new Map<string, 1>()),
-    ]);
+  const [
+    questionScores,
+    answerScores,
+    viewerQuestionVotes,
+    viewerAnswerVotes,
+    viewerQuestionFavorites,
+    viewerAnswerFavorites,
+  ] = await Promise.all([
+    voteScoresFor("question", [q.id]),
+    voteScoresFor("answer", answerIds),
+    viewerUserId
+      ? viewerVotesFor("question", [q.id], viewerUserId)
+      : Promise.resolve(new Map<string, 1>()),
+    viewerUserId
+      ? viewerVotesFor("answer", answerIds, viewerUserId)
+      : Promise.resolve(new Map<string, 1>()),
+    viewerUserId
+      ? viewerFavoritesFor("question", [q.id], viewerUserId)
+      : Promise.resolve(new Set<string>()),
+    viewerUserId
+      ? viewerFavoritesFor("answer", answerIds, viewerUserId)
+      : Promise.resolve(new Set<string>()),
+  ]);
 
   const mappedAnswers = q.answers.map((a) => ({
     id: a.id,
@@ -135,6 +150,7 @@ export async function getQuestionById(
     author: a.author,
     voteScore: answerScores.get(a.id) ?? 0,
     viewerVote: viewerAnswerVotes.get(a.id) ?? null,
+    isFavorited: viewerAnswerFavorites.has(a.id),
   }));
   const acceptedId = q.acceptedAnswerId;
   const sortedAnswers = acceptedId
@@ -149,6 +165,7 @@ export async function getQuestionById(
     ...q,
     voteScore: questionScores.get(q.id) ?? 0,
     viewerVote: viewerQuestionVotes.get(q.id) ?? null,
+    isFavorited: viewerQuestionFavorites.has(q.id),
     answers: sortedAnswers,
   };
 }
