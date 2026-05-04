@@ -20,22 +20,32 @@ A directory webapp where users form Subject Matter Expert (SME) groups, apply fo
 
 ```bash
 npm install
+npm run db:migrate    # apply schema to local SQLite
+npm run db:seed       # populate sample data (optional, recommended)
 npm run dev
 ```
 
 The app will be available at http://localhost:3000.
 
+After seeding, dev sign-in works with any of:
+`alice@example.com`, `bob@example.com`, `carol@example.com`, `dave@example.com`, `eve@example.com`.
+The seed is idempotent — re-running it converges on the same dataset.
+
 ## Scripts
 
-| Script                 | What it does                               |
-| ---------------------- | ------------------------------------------ |
-| `npm run dev`          | Start the dev server (Turbopack)           |
-| `npm run build`        | Production build                           |
-| `npm start`            | Run the production build                   |
-| `npm run lint`         | ESLint (Next.js config + Prettier-aligned) |
-| `npm run typecheck`    | TypeScript no-emit check                   |
-| `npm run format`       | Prettier write                             |
-| `npm run format:check` | Prettier check (no writes)                 |
+| Script                 | What it does                                        |
+| ---------------------- | --------------------------------------------------- |
+| `npm run dev`          | Start the dev server (Turbopack)                    |
+| `npm run build`        | Production build                                    |
+| `npm start`            | Run the production build                            |
+| `npm run lint`         | ESLint (Next.js config + Prettier-aligned)          |
+| `npm run typecheck`    | TypeScript no-emit check                            |
+| `npm run format`       | Prettier write                                      |
+| `npm run format:check` | Prettier check (no writes)                          |
+| `npm run db:migrate`   | Apply Prisma migrations to the local DB             |
+| `npm run db:reset`     | Reset the local DB and re-run migrations (re-seeds) |
+| `npm run db:seed`      | Populate the DB with sample users, groups, and Q&A  |
+| `npm run db:studio`    | Open Prisma Studio                                  |
 
 ## Project layout
 

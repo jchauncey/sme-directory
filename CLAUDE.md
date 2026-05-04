@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository status
 
-This repo is **pre-scaffold** — no application code has been written yet. The work is planned but unstarted. As a result, there are no build, lint, or test commands to document. When the scaffolding issue ([#1](https://github.com/jchauncey/sme-directory/issues/1)) lands, update this file with the actual commands.
+This repo is **pre-scaffold** — no application code has been written yet. The work is planned but unstarted. As a result, there are no build, lint, or test commands to document. When the scaffolding issue ([#1](https://github.com/HundredAcreStudio/sme-directory/issues/1)) lands, update this file with the actual commands.
 
 The authoritative artifacts so far:
 
 - [PROJECT_PLAN.md](PROJECT_PLAN.md) — proposed stack, data-model sketch, milestone breakdown, and v1 scope boundaries.
-- GitHub issues #1–#19 on `jchauncey/sme-directory` — each issue is one unit of work with explicit acceptance criteria, labelled by milestone (`M1-foundation` through `M6-polish`).
+- GitHub issues #1–#19 on `HundredAcreStudio/sme-directory` — each issue is one unit of work with explicit acceptance criteria, labelled by milestone (`M1-foundation` through `M6-polish`).
 
 When unsure what to work on next, list issues with `gh issue list --label M1-foundation` (or whichever milestone is in flight).
 
