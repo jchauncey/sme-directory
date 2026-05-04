@@ -8,6 +8,8 @@ import { getQuestionById } from "@/lib/questions";
 import { AnswerForm } from "./answer-form";
 import { AnswerActions } from "./answer-actions";
 import { VoteButton } from "./vote-button";
+import { QuestionResolveControls } from "./question-resolve-controls";
+import { AcceptAnswerButton } from "./accept-answer-button";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -33,9 +35,13 @@ export default async function QuestionDetailPage({ params }: Props) {
     ? await getMembership(question.group.id, currentUserId)
     : null;
   const isApprovedViewer = viewerMembership?.status === "approved";
-  const canDeleteAny =
+  const isModOrOwner =
     isApprovedViewer &&
     (viewerMembership?.role === "owner" || viewerMembership?.role === "moderator");
+  const canDeleteAny = isModOrOwner;
+  const canResolve =
+    currentUserId !== null &&
+    (question.author.id === currentUserId || isModOrOwner);
 
   const voteDisabledReason = !currentUserId
     ? "Sign in to vote."
@@ -53,7 +59,14 @@ export default async function QuestionDetailPage({ params }: Props) {
     <div className="mx-auto max-w-3xl space-y-4 py-8">
       <Card>
         <CardHeader className="border-b">
-          <CardTitle className="text-2xl">{question.title}</CardTitle>
+          <div className="flex items-start justify-between gap-3">
+            <CardTitle className="text-2xl">{question.title}</CardTitle>
+            <QuestionResolveControls
+              questionId={question.id}
+              status={question.status}
+              canResolve={canResolve}
+            />
+          </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Asked by {authorLabel(question.author)} in{" "}
             <Link href={`/groups/${question.group.slug}`} className="underline">
@@ -96,10 +109,25 @@ export default async function QuestionDetailPage({ params }: Props) {
               const answerVoteDisabledReason = isOwnAnswer
                 ? "You cannot vote on your own answer."
                 : voteDisabledReason;
+              const isAccepted = a.id === question.acceptedAnswerId;
+              const showAcceptButton = canResolve && !isAccepted;
               return (
                 <li key={a.id}>
-                  <Card>
+                  <Card
+                    className={
+                      isAccepted
+                        ? "border-green-600/60 bg-green-50/40 dark:border-green-500/50 dark:bg-green-950/20"
+                        : undefined
+                    }
+                  >
                     <CardContent className="space-y-2 pt-4">
+                      {isAccepted ? (
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center rounded-full border border-green-600/40 bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:border-green-500/40 dark:bg-green-950/40 dark:text-green-300">
+                            ✓ Accepted answer
+                          </span>
+                        </div>
+                      ) : null}
                       <div className="flex items-center gap-3">
                         <VoteButton
                           targetType="answer"
@@ -113,6 +141,12 @@ export default async function QuestionDetailPage({ params }: Props) {
                         <p className="text-xs text-muted-foreground">
                           {authorLabel(a.author)}
                         </p>
+                        {showAcceptButton ? (
+                          <AcceptAnswerButton
+                            questionId={question.id}
+                            answerId={a.id}
+                          />
+                        ) : null}
                       </div>
                       <AnswerActions
                         answerId={a.id}

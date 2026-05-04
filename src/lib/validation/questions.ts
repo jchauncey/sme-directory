@@ -25,3 +25,9 @@ export const questionListQuerySchema = z.object({
 });
 
 export type QuestionListQuery = z.input<typeof questionListQuerySchema>;
+
+export const acceptQuestionSchema = z.object({
+  answerId: z.string().min(1).optional().nullable(),
+});
+
+export type AcceptQuestionInput = z.input<typeof acceptQuestionSchema>;
