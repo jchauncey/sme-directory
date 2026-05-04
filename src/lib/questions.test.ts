@@ -172,4 +172,74 @@ describe("getQuestionById", () => {
   it("throws NotFoundError for unknown id", async () => {
     await expect(getQuestionById("does-not-exist")).rejects.toBeInstanceOf(NotFoundError);
   });
+
+  it("returns viewerVote=null when no viewerUserId is supplied", async () => {
+    const author = await makeUser("authV0");
+    const group = await createGroup(
+      { name: "V0", slug: uniq("v0"), autoApprove: true },
+      author.id,
+    );
+    const q = await createQuestion(
+      { title: "Title", body: "Body" },
+      group.id,
+      author.id,
+    );
+    const detail = await getQuestionById(q.id);
+    expect(detail.viewerVote).toBeNull();
+  });
+
+  it("returns viewerVote=1 on question and answers the viewer has voted on", async () => {
+    const author = await makeUser("authV1");
+    const group = await createGroup(
+      { name: "V1", slug: uniq("v1"), autoApprove: true },
+      author.id,
+    );
+    const q = await createQuestion(
+      { title: "Title", body: "Body" },
+      group.id,
+      author.id,
+    );
+    const a1 = await db.answer.create({
+      data: { questionId: q.id, authorId: author.id, body: "answer one" },
+    });
+    const a2 = await db.answer.create({
+      data: { questionId: q.id, authorId: author.id, body: "answer two" },
+    });
+    const viewer = await makeUser("viewerV1");
+    await db.vote.create({
+      data: { userId: viewer.id, targetType: "question", targetId: q.id, value: 1 },
+    });
+    await db.vote.create({
+      data: { userId: viewer.id, targetType: "answer", targetId: a1.id, value: 1 },
+    });
+
+    const detail = await getQuestionById(q.id, viewer.id);
+    expect(detail.viewerVote).toBe(1);
+    const answer1 = detail.answers.find((a) => a.id === a1.id)!;
+    const answer2 = detail.answers.find((a) => a.id === a2.id)!;
+    expect(answer1.viewerVote).toBe(1);
+    expect(answer2.viewerVote).toBeNull();
+  });
+
+  it("does not leak another user's vote into viewerVote", async () => {
+    const author = await makeUser("authV2");
+    const group = await createGroup(
+      { name: "V2", slug: uniq("v2"), autoApprove: true },
+      author.id,
+    );
+    const q = await createQuestion(
+      { title: "Title", body: "Body" },
+      group.id,
+      author.id,
+    );
+    const otherVoter = await makeUser("otherV2");
+    await db.vote.create({
+      data: { userId: otherVoter.id, targetType: "question", targetId: q.id, value: 1 },
+    });
+    const viewer = await makeUser("meV2");
+
+    const detail = await getQuestionById(q.id, viewer.id);
+    expect(detail.voteScore).toBe(1);
+    expect(detail.viewerVote).toBeNull();
+  });
 });
