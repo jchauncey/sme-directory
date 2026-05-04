@@ -2,8 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarkdownBody } from "@/components/markdown-body";
-import { NotFoundError } from "@/lib/memberships";
+import { getSession } from "@/lib/auth";
+import { NotFoundError, getMembership } from "@/lib/memberships";
 import { getQuestionById } from "@/lib/questions";
+import { AnswerForm } from "./answer-form";
+import { AnswerActions } from "./answer-actions";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -21,6 +24,16 @@ export default async function QuestionDetailPage({ params }: Props) {
     if (err instanceof NotFoundError) notFound();
     throw err;
   }
+
+  const session = await getSession();
+  const currentUserId = session?.user.id ?? null;
+  const viewerMembership = currentUserId
+    ? await getMembership(question.group.id, currentUserId)
+    : null;
+  const isApprovedViewer = viewerMembership?.status === "approved";
+  const canDeleteAny =
+    isApprovedViewer &&
+    (viewerMembership?.role === "owner" || viewerMembership?.role === "moderator");
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 py-8">
@@ -49,23 +62,54 @@ export default async function QuestionDetailPage({ params }: Props) {
         </h2>
         {question.answers.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Answers ship in a follow-up — check back soon.
+            Be the first to answer.
           </p>
         ) : (
           <ul className="space-y-3">
-            {question.answers.map((a) => (
-              <li key={a.id}>
-                <Card>
-                  <CardContent className="space-y-2 pt-4">
-                    <p className="text-xs text-muted-foreground">
-                      {authorLabel(a.author)} · Score {a.voteScore}
-                    </p>
-                    <MarkdownBody source={a.body} />
-                  </CardContent>
-                </Card>
-              </li>
-            ))}
+            {question.answers.map((a) => {
+              const canEdit = currentUserId !== null && a.author.id === currentUserId;
+              return (
+                <li key={a.id}>
+                  <Card>
+                    <CardContent className="space-y-2 pt-4">
+                      <p className="text-xs text-muted-foreground">
+                        {authorLabel(a.author)} · Score {a.voteScore}
+                      </p>
+                      <AnswerActions
+                        answerId={a.id}
+                        questionId={question.id}
+                        body={a.body}
+                        canEdit={canEdit}
+                        canDelete={canDeleteAny}
+                      />
+                    </CardContent>
+                  </Card>
+                </li>
+              );
+            })}
           </ul>
+        )}
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-base font-medium">Post an answer</h3>
+        {!currentUserId ? (
+          <p className="text-sm text-muted-foreground">
+            <Link href="/login" className="underline">
+              Sign in
+            </Link>{" "}
+            to post an answer.
+          </p>
+        ) : isApprovedViewer ? (
+          <AnswerForm questionId={question.id} />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            You must be an approved member of{" "}
+            <Link href={`/groups/${question.group.slug}`} className="underline">
+              {question.group.name}
+            </Link>{" "}
+            to answer this question.
+          </p>
         )}
       </section>
     </div>
