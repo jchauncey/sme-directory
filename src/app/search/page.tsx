@@ -2,15 +2,21 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { getSession } from "@/lib/auth";
+import { getGroupBySlug } from "@/lib/groups";
+import { listGroupsForUser } from "@/lib/profile";
 import { searchContent, type SearchHit } from "@/lib/search";
 import { searchQuerySchema } from "@/lib/validation/search";
+
+import { applyGroupSlugDefault } from "./normalize";
+import { SearchControls, type MyGroup } from "./search-controls";
 
 type Props = {
   searchParams: Promise<{
     q?: string;
     scope?: string;
     groupIds?: string;
+    groupSlug?: string;
     page?: string;
     per?: string;
   }>;
@@ -71,9 +77,7 @@ function HitCard({ hit }: { hit: SearchHit }) {
           {titleNode}
         </Link>
       </h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {renderSnippet(hit.bodyExcerpt)}
-      </p>
+      <p className="mt-1 text-sm text-muted-foreground">{renderSnippet(hit.bodyExcerpt)}</p>
     </li>
   );
 }
@@ -83,6 +87,7 @@ function PageLink({
   q,
   scope,
   groupIds,
+  groupSlug,
   per,
   children,
   disabled,
@@ -91,6 +96,7 @@ function PageLink({
   q: string;
   scope: string;
   groupIds: string | undefined;
+  groupSlug: string | undefined;
   per: number;
   children: ReactNode;
   disabled?: boolean;
@@ -104,6 +110,7 @@ function PageLink({
   }
   const params = new URLSearchParams({ q, scope, page: String(to), per: String(per) });
   if (groupIds) params.set("groupIds", groupIds);
+  if (groupSlug) params.set("groupSlug", groupSlug);
   return (
     <Button variant="outline" size="sm" render={<Link href={`/search?${params.toString()}`} />}>
       {children}
@@ -114,23 +121,39 @@ function PageLink({
 export default async function SearchPage({ searchParams }: Props) {
   const sp = await searchParams;
   const rawQ = sp.q?.trim() ?? "";
-  const scopeRaw = sp.scope ?? "all";
-  const scope: "all" | "current" | "selected" =
-    scopeRaw === "current" || scopeRaw === "selected" ? scopeRaw : "all";
-  const groupIdsRaw = sp.groupIds;
   const per = Math.min(Math.max(Number(sp.per) || 20, 1), 50);
   const requestedPage = Math.max(Number(sp.page) || 1, 1);
 
-  let results:
-    | { items: SearchHit[]; total: number; page: number; per: number }
-    | null = null;
+  const [session, contextGroup] = await Promise.all([
+    getSession(),
+    sp.groupSlug ? getGroupBySlug(sp.groupSlug) : Promise.resolve(null),
+  ]);
+
+  const myGroups: MyGroup[] = session
+    ? (await listGroupsForUser(session.user.id, { includePending: false })).map((g) => ({
+        id: g.id,
+        slug: g.slug,
+        name: g.name,
+      }))
+    : [];
+
+  const normalized = applyGroupSlugDefault(
+    sp.scope,
+    sp.groupIds,
+    contextGroup?.id ?? null,
+    sp.groupSlug,
+  );
+
+  const groupIdsCsv = normalized.groupIds.length > 0 ? normalized.groupIds.join(",") : undefined;
+
+  let results: { items: SearchHit[]; total: number; page: number; per: number } | null = null;
   let validationMessage: string | null = null;
 
   if (rawQ.length > 0) {
     const parsed = searchQuerySchema.safeParse({
       q: rawQ,
-      scope,
-      groupIds: groupIdsRaw,
+      scope: normalized.scope,
+      groupIds: groupIdsCsv,
       page: String(requestedPage),
       per: String(per),
     });
@@ -150,31 +173,21 @@ export default async function SearchPage({ searchParams }: Props) {
         <h1 className="text-2xl font-semibold tracking-tight">Search</h1>
         <p className="text-sm text-muted-foreground">
           Search questions and answers across groups.
+          {contextGroup ? (
+            <>
+              {" "}
+              Defaulting to <span className="font-medium">{contextGroup.name}</span>.
+            </>
+          ) : null}
         </p>
       </div>
 
-      <form className="flex flex-wrap items-center gap-2" method="get" action="/search">
-        <Input
-          name="q"
-          defaultValue={rawQ}
-          placeholder="Search…"
-          aria-label="Search query"
-          className="max-w-md flex-1"
-          autoFocus
-        />
-        <select
-          name="scope"
-          defaultValue={scope}
-          aria-label="Scope"
-          className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
-        >
-          <option value="all">All groups</option>
-          <option value="selected">Selected groups</option>
-          <option value="current">Current group</option>
-        </select>
-        {groupIdsRaw ? <input type="hidden" name="groupIds" value={groupIdsRaw} /> : null}
-        <Button type="submit">Search</Button>
-      </form>
+      <SearchControls
+        initialQ={rawQ}
+        initialScope={normalized.scope}
+        initialGroupIds={normalized.groupIds}
+        myGroups={myGroups}
+      />
 
       {validationMessage ? (
         <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
@@ -182,7 +195,11 @@ export default async function SearchPage({ searchParams }: Props) {
         </p>
       ) : null}
 
-      {results && rawQ.length > 0 ? (
+      {rawQ.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+          Type a query to search.
+        </p>
+      ) : results ? (
         results.items.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
             No matches for <span className="font-medium">“{rawQ}”</span>.
@@ -190,7 +207,8 @@ export default async function SearchPage({ searchParams }: Props) {
         ) : (
           <div className="space-y-4">
             <p className="text-xs text-muted-foreground">
-              {results.total} match{results.total === 1 ? "" : "es"} · page {currentPage} of {totalPages}
+              {results.total} match{results.total === 1 ? "" : "es"} · page {currentPage} of{" "}
+              {totalPages}
             </p>
             <ul className="space-y-3">
               {results.items.map((hit) => (
@@ -201,8 +219,9 @@ export default async function SearchPage({ searchParams }: Props) {
               <PageLink
                 to={currentPage - 1}
                 q={rawQ}
-                scope={scope}
-                groupIds={groupIdsRaw}
+                scope={normalized.scope}
+                groupIds={groupIdsCsv}
+                groupSlug={normalized.groupSlugForUrl ?? undefined}
                 per={per}
                 disabled={currentPage <= 1}
               >
@@ -211,8 +230,9 @@ export default async function SearchPage({ searchParams }: Props) {
               <PageLink
                 to={currentPage + 1}
                 q={rawQ}
-                scope={scope}
-                groupIds={groupIdsRaw}
+                scope={normalized.scope}
+                groupIds={groupIdsCsv}
+                groupSlug={normalized.groupSlugForUrl ?? undefined}
                 per={per}
                 disabled={currentPage >= totalPages}
               >

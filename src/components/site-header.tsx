@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { SearchIcon } from "lucide-react";
 
 import { UserMenu } from "@/components/auth/user-menu";
+import { HeaderSearch } from "@/components/header-search";
 import { ModeToggle } from "@/components/mode-toggle";
 import { NotificationBell } from "@/components/notification-bell";
-import { Button } from "@/components/ui/button";
 
 export function SiteHeader() {
   return (
@@ -14,15 +13,7 @@ export function SiteHeader() {
           SME Directory
         </Link>
         <div className="flex flex-1 items-center justify-end gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden w-full max-w-xs justify-start gap-2 text-muted-foreground md:flex"
-            render={<Link href="/search" />}
-          >
-            <SearchIcon className="size-3.5" />
-            <span>Search…</span>
-          </Button>
+          <HeaderSearch />
           <nav className="flex items-center gap-3 text-sm">
             <Link href="/groups" className="text-muted-foreground hover:text-foreground">
               Groups
