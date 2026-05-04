@@ -1,7 +1,11 @@
 import "server-only";
 import type { Answer, Question, User } from "@prisma/client";
 import { db } from "@/lib/db";
-import { NotFoundError } from "@/lib/memberships";
+import {
+  AuthorizationError,
+  NotFoundError,
+  isOwnerOrModerator,
+} from "@/lib/memberships";
 import { viewerVotesFor, voteScoresFor } from "@/lib/votes";
 import type { CreateQuestionInput } from "@/lib/validation/questions";
 
@@ -123,18 +127,86 @@ export async function getQuestionById(
         : Promise.resolve(new Map<string, 1>()),
     ]);
 
+  const mappedAnswers = q.answers.map((a) => ({
+    id: a.id,
+    body: a.body,
+    createdAt: a.createdAt,
+    updatedAt: a.updatedAt,
+    author: a.author,
+    voteScore: answerScores.get(a.id) ?? 0,
+    viewerVote: viewerAnswerVotes.get(a.id) ?? null,
+  }));
+  const acceptedId = q.acceptedAnswerId;
+  const sortedAnswers = acceptedId
+    ? [...mappedAnswers].sort((a, b) => {
+        if (a.id === acceptedId) return -1;
+        if (b.id === acceptedId) return 1;
+        return 0;
+      })
+    : mappedAnswers;
+
   return {
     ...q,
     voteScore: questionScores.get(q.id) ?? 0,
     viewerVote: viewerQuestionVotes.get(q.id) ?? null,
-    answers: q.answers.map((a) => ({
-      id: a.id,
-      body: a.body,
-      createdAt: a.createdAt,
-      updatedAt: a.updatedAt,
-      author: a.author,
-      voteScore: answerScores.get(a.id) ?? 0,
-      viewerVote: viewerAnswerVotes.get(a.id) ?? null,
-    })),
+    answers: sortedAnswers,
   };
+}
+
+async function assertCanResolveQuestion(
+  question: { authorId: string; groupId: string },
+  userId: string,
+): Promise<void> {
+  if (question.authorId === userId) return;
+  if (await isOwnerOrModerator(question.groupId, userId)) return;
+  throw new AuthorizationError(
+    "Only the question's author or a group moderator/owner can resolve this question.",
+  );
+}
+
+export async function acceptAnswer(
+  questionId: string,
+  answerId: string | null,
+  userId: string,
+): Promise<Question> {
+  const question = await db.question.findUnique({
+    where: { id: questionId },
+    select: { id: true, authorId: true, groupId: true },
+  });
+  if (!question) throw new NotFoundError("Question not found.");
+
+  await assertCanResolveQuestion(question, userId);
+
+  if (answerId) {
+    const answer = await db.answer.findUnique({
+      where: { id: answerId },
+      select: { id: true, questionId: true },
+    });
+    if (!answer || answer.questionId !== questionId) {
+      throw new NotFoundError("Answer not found for this question.");
+    }
+  }
+
+  return db.question.update({
+    where: { id: questionId },
+    data: { status: "answered", acceptedAnswerId: answerId },
+  });
+}
+
+export async function reopenQuestion(
+  questionId: string,
+  userId: string,
+): Promise<Question> {
+  const question = await db.question.findUnique({
+    where: { id: questionId },
+    select: { id: true, authorId: true, groupId: true },
+  });
+  if (!question) throw new NotFoundError("Question not found.");
+
+  await assertCanResolveQuestion(question, userId);
+
+  return db.question.update({
+    where: { id: questionId },
+    data: { status: "open", acceptedAnswerId: null },
+  });
 }

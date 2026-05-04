@@ -12,6 +12,7 @@ import {
   deleteAnswer,
   updateAnswer,
 } from "@/lib/answers";
+import { acceptAnswer, reopenQuestion } from "@/lib/questions";
 import { db } from "@/lib/db";
 import {
   createAnswerSchema,
@@ -114,6 +115,67 @@ export async function updateAnswerAction(
     return {
       error: err instanceof Error ? err.message : "Could not update answer.",
       values: raw,
+    };
+  }
+
+  revalidatePath(`/q/${questionId}`);
+  return { ok: true };
+}
+
+export type ResolveQuestionResult = { error?: string; ok?: boolean };
+
+export async function acceptAnswerAction(
+  questionId: string,
+  answerId: string | null,
+): Promise<ResolveQuestionResult> {
+  const session = await getSession();
+  if (!session) {
+    return { error: "You must be signed in to mark a question as answered." };
+  }
+
+  try {
+    await acceptAnswer(questionId, answerId, session.user.id);
+  } catch (err) {
+    if (err instanceof AuthorizationError) {
+      return {
+        error:
+          "Only the question's author or a group moderator/owner can mark this question as answered.",
+      };
+    }
+    if (err instanceof NotFoundError) {
+      return { error: err.message };
+    }
+    return {
+      error: err instanceof Error ? err.message : "Could not mark question as answered.",
+    };
+  }
+
+  revalidatePath(`/q/${questionId}`);
+  return { ok: true };
+}
+
+export async function reopenQuestionAction(
+  questionId: string,
+): Promise<ResolveQuestionResult> {
+  const session = await getSession();
+  if (!session) {
+    return { error: "You must be signed in to reopen a question." };
+  }
+
+  try {
+    await reopenQuestion(questionId, session.user.id);
+  } catch (err) {
+    if (err instanceof AuthorizationError) {
+      return {
+        error:
+          "Only the question's author or a group moderator/owner can reopen this question.",
+      };
+    }
+    if (err instanceof NotFoundError) {
+      return { error: err.message };
+    }
+    return {
+      error: err instanceof Error ? err.message : "Could not reopen question.",
     };
   }
 
