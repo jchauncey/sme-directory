@@ -8,6 +8,7 @@ import { getQuestionById } from "@/lib/questions";
 import { AnswerForm } from "./answer-form";
 import { AnswerActions } from "./answer-actions";
 import { VoteButton } from "./vote-button";
+import { FavoriteButton } from "./favorite-button";
 import { QuestionResolveControls } from "./question-resolve-controls";
 import { AcceptAnswerButton } from "./accept-answer-button";
 
@@ -75,15 +76,25 @@ export default async function QuestionDetailPage({ params }: Props) {
           </p>
         </CardHeader>
         <CardContent className="space-y-3 pt-4">
-          <VoteButton
-            targetType="question"
-            targetId={question.id}
-            questionId={question.id}
-            initialScore={question.voteScore}
-            initialVoted={question.viewerVote === 1}
-            disabled={questionVoteDisabled}
-            disabledReason={questionVoteDisabledReason}
-          />
+          <div className="flex items-center gap-2">
+            <VoteButton
+              targetType="question"
+              targetId={question.id}
+              questionId={question.id}
+              initialScore={question.voteScore}
+              initialVoted={question.viewerVote === 1}
+              disabled={questionVoteDisabled}
+              disabledReason={questionVoteDisabledReason}
+            />
+            <FavoriteButton
+              targetType="question"
+              targetId={question.id}
+              questionId={question.id}
+              initialFavorited={question.isFavorited}
+              disabled={!currentUserId}
+              disabledReason={!currentUserId ? "Sign in to favorite." : undefined}
+            />
+          </div>
           <MarkdownBody source={question.body} />
         </CardContent>
       </Card>
@@ -137,6 +148,16 @@ export default async function QuestionDetailPage({ params }: Props) {
                           initialVoted={a.viewerVote === 1}
                           disabled={answerVoteDisabled}
                           disabledReason={answerVoteDisabledReason}
+                        />
+                        <FavoriteButton
+                          targetType="answer"
+                          targetId={a.id}
+                          questionId={question.id}
+                          initialFavorited={a.isFavorited}
+                          disabled={!currentUserId}
+                          disabledReason={
+                            !currentUserId ? "Sign in to favorite." : undefined
+                          }
                         />
                         <p className="text-xs text-muted-foreground">
                           {authorLabel(a.author)}

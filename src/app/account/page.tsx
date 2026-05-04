@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireAuth } from "@/lib/auth";
 
 export default async function AccountPage() {
@@ -19,6 +20,11 @@ export default async function AccountPage() {
         <dt className="text-zinc-500 dark:text-zinc-400">Name</dt>
         <dd>{session.user.name ?? "—"}</dd>
       </dl>
+      <nav className="text-sm">
+        <Link href="/me/favorites" className="underline">
+          My favorites
+        </Link>
+      </nav>
     </div>
   );
 }
