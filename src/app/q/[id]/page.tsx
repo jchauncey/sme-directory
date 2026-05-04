@@ -7,6 +7,7 @@ import { NotFoundError, getMembership } from "@/lib/memberships";
 import { getQuestionById } from "@/lib/questions";
 import { AnswerForm } from "./answer-form";
 import { AnswerActions } from "./answer-actions";
+import { VoteButton } from "./vote-button";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -17,16 +18,17 @@ function authorLabel(a: { name: string | null; email: string | null }): string {
 export default async function QuestionDetailPage({ params }: Props) {
   const { id } = await params;
 
+  const session = await getSession();
+  const currentUserId = session?.user.id ?? null;
+
   let question;
   try {
-    question = await getQuestionById(id);
+    question = await getQuestionById(id, currentUserId ?? undefined);
   } catch (err) {
     if (err instanceof NotFoundError) notFound();
     throw err;
   }
 
-  const session = await getSession();
-  const currentUserId = session?.user.id ?? null;
   const viewerMembership = currentUserId
     ? await getMembership(question.group.id, currentUserId)
     : null;
@@ -34,6 +36,18 @@ export default async function QuestionDetailPage({ params }: Props) {
   const canDeleteAny =
     isApprovedViewer &&
     (viewerMembership?.role === "owner" || viewerMembership?.role === "moderator");
+
+  const voteDisabledReason = !currentUserId
+    ? "Sign in to vote."
+    : !isApprovedViewer
+      ? "You must be an approved member of this group to vote."
+      : undefined;
+  const questionVoteDisabled =
+    !currentUserId || !isApprovedViewer || question.author.id === currentUserId;
+  const questionVoteDisabledReason =
+    currentUserId && question.author.id === currentUserId
+      ? "You cannot vote on your own question."
+      : voteDisabledReason;
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 py-8">
@@ -45,11 +59,18 @@ export default async function QuestionDetailPage({ params }: Props) {
             <Link href={`/groups/${question.group.slug}`} className="underline">
               {question.group.name}
             </Link>
-            {" · "}
-            <span>Score {question.voteScore}</span>
           </p>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="space-y-3 pt-4">
+          <VoteButton
+            targetType="question"
+            targetId={question.id}
+            questionId={question.id}
+            initialScore={question.voteScore}
+            initialVoted={question.viewerVote === 1}
+            disabled={questionVoteDisabled}
+            disabledReason={questionVoteDisabledReason}
+          />
           <MarkdownBody source={question.body} />
         </CardContent>
       </Card>
@@ -67,14 +88,32 @@ export default async function QuestionDetailPage({ params }: Props) {
         ) : (
           <ul className="space-y-3">
             {question.answers.map((a) => {
-              const canEdit = currentUserId !== null && a.author.id === currentUserId;
+              const isOwnAnswer =
+                currentUserId !== null && a.author.id === currentUserId;
+              const canEdit = isOwnAnswer;
+              const answerVoteDisabled =
+                !currentUserId || !isApprovedViewer || isOwnAnswer;
+              const answerVoteDisabledReason = isOwnAnswer
+                ? "You cannot vote on your own answer."
+                : voteDisabledReason;
               return (
                 <li key={a.id}>
                   <Card>
                     <CardContent className="space-y-2 pt-4">
-                      <p className="text-xs text-muted-foreground">
-                        {authorLabel(a.author)} · Score {a.voteScore}
-                      </p>
+                      <div className="flex items-center gap-3">
+                        <VoteButton
+                          targetType="answer"
+                          targetId={a.id}
+                          questionId={question.id}
+                          initialScore={a.voteScore}
+                          initialVoted={a.viewerVote === 1}
+                          disabled={answerVoteDisabled}
+                          disabledReason={answerVoteDisabledReason}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {authorLabel(a.author)}
+                        </p>
+                      </div>
                       <AnswerActions
                         answerId={a.id}
                         questionId={question.id}

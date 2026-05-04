@@ -2,6 +2,7 @@ import "server-only";
 import type { Answer, Question, User } from "@prisma/client";
 import { db } from "@/lib/db";
 import { NotFoundError } from "@/lib/memberships";
+import { viewerVotesFor, voteScoresFor } from "@/lib/votes";
 import type { CreateQuestionInput } from "@/lib/validation/questions";
 
 export type QuestionAuthor = Pick<User, "id" | "email" | "name">;
@@ -29,9 +30,11 @@ export type QuestionDetail = Question & {
     Pick<Answer, "id" | "body" | "createdAt" | "updatedAt"> & {
       author: QuestionAuthor;
       voteScore: number;
+      viewerVote: 1 | null;
     }
   >;
   voteScore: number;
+  viewerVote: 1 | null;
 };
 
 export async function createQuestion(
@@ -47,16 +50,6 @@ export async function createQuestion(
       body: input.body,
     },
   });
-}
-
-async function voteScoresFor(targetType: "question" | "answer", ids: string[]) {
-  if (ids.length === 0) return new Map<string, number>();
-  const rows = await db.vote.groupBy({
-    by: ["targetId"],
-    where: { targetType, targetId: { in: ids } },
-    _sum: { value: true },
-  });
-  return new Map(rows.map((r) => [r.targetId, r._sum.value ?? 0]));
 }
 
 export async function listQuestionsForGroup(
@@ -97,7 +90,10 @@ export async function listQuestionsForGroup(
   return { items, total, page: opts.page, per: opts.per };
 }
 
-export async function getQuestionById(id: string): Promise<QuestionDetail> {
+export async function getQuestionById(
+  id: string,
+  viewerUserId?: string,
+): Promise<QuestionDetail> {
   const q = await db.question.findUnique({
     where: { id },
     include: {
@@ -113,17 +109,24 @@ export async function getQuestionById(id: string): Promise<QuestionDetail> {
   });
   if (!q) throw new NotFoundError("Question not found.");
 
-  const [questionScores, answerScores] = await Promise.all([
-    voteScoresFor("question", [q.id]),
-    voteScoresFor(
-      "answer",
-      q.answers.map((a) => a.id),
-    ),
-  ]);
+  const answerIds = q.answers.map((a) => a.id);
+
+  const [questionScores, answerScores, viewerQuestionVotes, viewerAnswerVotes] =
+    await Promise.all([
+      voteScoresFor("question", [q.id]),
+      voteScoresFor("answer", answerIds),
+      viewerUserId
+        ? viewerVotesFor("question", [q.id], viewerUserId)
+        : Promise.resolve(new Map<string, 1>()),
+      viewerUserId
+        ? viewerVotesFor("answer", answerIds, viewerUserId)
+        : Promise.resolve(new Map<string, 1>()),
+    ]);
 
   return {
     ...q,
     voteScore: questionScores.get(q.id) ?? 0,
+    viewerVote: viewerQuestionVotes.get(q.id) ?? null,
     answers: q.answers.map((a) => ({
       id: a.id,
       body: a.body,
@@ -131,6 +134,7 @@ export async function getQuestionById(id: string): Promise<QuestionDetail> {
       updatedAt: a.updatedAt,
       author: a.author,
       voteScore: answerScores.get(a.id) ?? 0,
+      viewerVote: viewerAnswerVotes.get(a.id) ?? null,
     })),
   };
 }
