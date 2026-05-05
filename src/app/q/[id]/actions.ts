@@ -12,12 +12,18 @@ import {
   deleteAnswer,
   updateAnswer,
 } from "@/lib/answers";
-import { acceptAnswer, reopenQuestion, softDeleteQuestion } from "@/lib/questions";
+import {
+  acceptAnswer,
+  reopenQuestion,
+  softDeleteQuestion,
+  updateQuestion,
+} from "@/lib/questions";
 import { db } from "@/lib/db";
 import {
   createAnswerSchema,
   updateAnswerSchema,
 } from "@/lib/validation/answers";
+import { updateQuestionSchema } from "@/lib/validation/questions";
 
 export type FieldError = { path: string; message: string };
 
@@ -114,6 +120,57 @@ export async function updateAnswerAction(
     }
     return {
       error: err instanceof Error ? err.message : "Could not update answer.",
+      values: raw,
+    };
+  }
+
+  revalidatePath(`/q/${questionId}`);
+  return { ok: true };
+}
+
+export type QuestionFormState = {
+  ok?: boolean;
+  error?: string;
+  fieldErrors?: FieldError[];
+  values?: { title?: string; body?: string };
+};
+
+export async function updateQuestionAction(
+  questionId: string,
+  _prev: QuestionFormState,
+  formData: FormData,
+): Promise<QuestionFormState> {
+  const session = await getSession();
+  if (!session) {
+    return { error: "You must be signed in to edit a question." };
+  }
+
+  const raw = {
+    title: String(formData.get("title") ?? ""),
+    body: String(formData.get("body") ?? ""),
+  };
+  const parsed = updateQuestionSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      fieldErrors: parsed.error.issues.map((i) => ({
+        path: i.path.join("."),
+        message: i.message,
+      })),
+      values: raw,
+    };
+  }
+
+  try {
+    await updateQuestion(questionId, parsed.data, session.user.id);
+  } catch (err) {
+    if (err instanceof AuthorizationError) {
+      return { error: "Only the question's author can edit it.", values: raw };
+    }
+    if (err instanceof NotFoundError) {
+      return { error: err.message, values: raw };
+    }
+    return {
+      error: err instanceof Error ? err.message : "Could not update question.",
       values: raw,
     };
   }

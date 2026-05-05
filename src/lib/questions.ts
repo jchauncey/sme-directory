@@ -8,7 +8,10 @@ import {
 } from "@/lib/memberships";
 import { viewerVotesFor, voteScoresFor } from "@/lib/votes";
 import { viewerFavoritesFor } from "@/lib/favorites";
-import type { CreateQuestionInput } from "@/lib/validation/questions";
+import type {
+  CreateQuestionInput,
+  UpdateQuestionInput,
+} from "@/lib/validation/questions";
 
 export type QuestionAuthor = Pick<User, "id" | "email" | "name">;
 
@@ -56,6 +59,25 @@ export async function createQuestion(
       title: input.title,
       body: input.body,
     },
+  });
+}
+
+export async function updateQuestion(
+  questionId: string,
+  input: UpdateQuestionInput,
+  userId: string,
+): Promise<Question> {
+  const existing = await db.question.findUnique({
+    where: { id: questionId },
+    select: { id: true, authorId: true },
+  });
+  if (!existing) throw new NotFoundError("Question not found.");
+  if (existing.authorId !== userId) {
+    throw new AuthorizationError("Only the question's author can edit it.");
+  }
+  return db.question.update({
+    where: { id: questionId },
+    data: { title: input.title, body: input.body },
   });
 }
 

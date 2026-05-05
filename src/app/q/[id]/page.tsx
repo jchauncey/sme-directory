@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MarkdownBody } from "@/components/markdown-body";
 import { getSession } from "@/lib/auth";
 import { NotFoundError, getMembership } from "@/lib/memberships";
 import { getQuestionById } from "@/lib/questions";
@@ -12,6 +11,7 @@ import { FavoriteButton } from "./favorite-button";
 import { QuestionResolveControls } from "./question-resolve-controls";
 import { QuestionDeleteButton } from "./question-delete-button";
 import { AcceptAnswerButton } from "./accept-answer-button";
+import { EditQuestionForm } from "./edit-question-form";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -81,12 +81,14 @@ export default async function QuestionDetailPage({ params }: Props) {
     isApprovedViewer &&
     (viewerMembership?.role === "owner" || viewerMembership?.role === "moderator");
   const canDeleteAny = isModOrOwner;
+  const isAuthor =
+    currentUserId !== null && question.author.id === currentUserId;
   const canResolve =
-    currentUserId !== null &&
-    (question.author.id === currentUserId || isModOrOwner);
+    currentUserId !== null && (isAuthor || isModOrOwner);
   const canDeleteQuestion =
-    currentUserId !== null &&
-    (question.author.id === currentUserId || isModOrOwner);
+    currentUserId !== null && (isAuthor || isModOrOwner);
+  const isEdited =
+    question.updatedAt.getTime() > question.createdAt.getTime();
 
   const voteDisabledReason = !currentUserId
     ? "Sign in to vote."
@@ -122,6 +124,11 @@ export default async function QuestionDetailPage({ params }: Props) {
             <Link href={`/groups/${question.group.slug}`} className="underline">
               {question.group.name}
             </Link>
+            {isEdited ? (
+              <span className="ml-2 inline-flex items-center rounded-full border border-zinc-300 bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+                edited
+              </span>
+            ) : null}
           </p>
         </CardHeader>
         <CardContent className="space-y-3 pt-4">
@@ -144,7 +151,12 @@ export default async function QuestionDetailPage({ params }: Props) {
               disabledReason={!currentUserId ? "Sign in to favorite." : undefined}
             />
           </div>
-          <MarkdownBody source={question.body} />
+          <EditQuestionForm
+            questionId={question.id}
+            title={question.title}
+            body={question.body}
+            canEdit={isAuthor}
+          />
         </CardContent>
       </Card>
 
