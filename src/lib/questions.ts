@@ -66,7 +66,7 @@ export async function listQuestionsForGroup(
   const skip = (opts.page - 1) * opts.per;
   const [rows, total] = await Promise.all([
     db.question.findMany({
-      where: { groupId },
+      where: { groupId, deletedAt: null },
       orderBy: { createdAt: "desc" },
       skip,
       take: opts.per,
@@ -75,7 +75,7 @@ export async function listQuestionsForGroup(
         _count: { select: { answers: true } },
       },
     }),
-    db.question.count({ where: { groupId } }),
+    db.question.count({ where: { groupId, deletedAt: null } }),
   ]);
 
   const scores = await voteScoresFor(
@@ -115,6 +115,18 @@ export async function getQuestionById(
     },
   });
   if (!q) throw new NotFoundError("Question not found.");
+
+  // Soft-deleted: return a stripped detail so callers can render a tombstone
+  // without paying for vote/favorite/answer joins. Permalinks still resolve.
+  if (q.deletedAt) {
+    return {
+      ...q,
+      voteScore: 0,
+      viewerVote: null,
+      isFavorited: false,
+      answers: [],
+    };
+  }
 
   const answerIds = q.answers.map((a) => a.id);
 
@@ -188,9 +200,11 @@ export async function acceptAnswer(
 ): Promise<Question> {
   const question = await db.question.findUnique({
     where: { id: questionId },
-    select: { id: true, authorId: true, groupId: true },
+    select: { id: true, authorId: true, groupId: true, deletedAt: true },
   });
-  if (!question) throw new NotFoundError("Question not found.");
+  if (!question || question.deletedAt) {
+    throw new NotFoundError("Question not found.");
+  }
 
   await assertCanResolveQuestion(question, userId);
 
@@ -216,9 +230,11 @@ export async function reopenQuestion(
 ): Promise<Question> {
   const question = await db.question.findUnique({
     where: { id: questionId },
-    select: { id: true, authorId: true, groupId: true },
+    select: { id: true, authorId: true, groupId: true, deletedAt: true },
   });
-  if (!question) throw new NotFoundError("Question not found.");
+  if (!question || question.deletedAt) {
+    throw new NotFoundError("Question not found.");
+  }
 
   await assertCanResolveQuestion(question, userId);
 
@@ -226,4 +242,53 @@ export async function reopenQuestion(
     where: { id: questionId },
     data: { status: "open", acceptedAnswerId: null },
   });
+}
+
+async function assertCanDeleteQuestion(
+  question: { authorId: string; groupId: string },
+  userId: string,
+): Promise<void> {
+  if (question.authorId === userId) return;
+  if (await isOwnerOrModerator(question.groupId, userId)) return;
+  throw new AuthorizationError(
+    "Only the question's author or a group moderator/owner can delete this question.",
+  );
+}
+
+export type SoftDeleteQuestionResult = {
+  id: string;
+  groupId: string;
+  groupSlug: string;
+};
+
+export async function softDeleteQuestion(
+  questionId: string,
+  userId: string,
+): Promise<SoftDeleteQuestionResult> {
+  const question = await db.question.findUnique({
+    where: { id: questionId },
+    select: {
+      id: true,
+      authorId: true,
+      groupId: true,
+      deletedAt: true,
+      group: { select: { slug: true } },
+    },
+  });
+  if (!question || question.deletedAt) {
+    throw new NotFoundError("Question not found.");
+  }
+
+  await assertCanDeleteQuestion(question, userId);
+
+  await db.question.update({
+    where: { id: questionId },
+    data: { deletedAt: new Date() },
+  });
+
+  return {
+    id: question.id,
+    groupId: question.groupId,
+    groupSlug: question.group.slug,
+  };
 }

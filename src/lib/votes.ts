@@ -53,19 +53,19 @@ async function resolveTarget(
   if (targetType === "question") {
     const q = await db.question.findUnique({
       where: { id: targetId },
-      select: { groupId: true, authorId: true },
+      select: { groupId: true, authorId: true, deletedAt: true },
     });
-    if (!q) throw new NotFoundError("Question not found.");
-    return q;
+    if (!q || q.deletedAt) throw new NotFoundError("Question not found.");
+    return { groupId: q.groupId, authorId: q.authorId };
   }
   const a = await db.answer.findUnique({
     where: { id: targetId },
     select: {
       authorId: true,
-      question: { select: { groupId: true } },
+      question: { select: { groupId: true, deletedAt: true } },
     },
   });
-  if (!a) throw new NotFoundError("Answer not found.");
+  if (!a || a.question.deletedAt) throw new NotFoundError("Answer not found.");
   return { groupId: a.question.groupId, authorId: a.authorId };
 }
 

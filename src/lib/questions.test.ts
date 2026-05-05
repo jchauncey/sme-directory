@@ -17,7 +17,15 @@ process.env["DATABASE_URL"] = `file:${testDbPath}`;
 const { db } = await import("./db");
 const { createGroup } = await import("./groups");
 const { NotFoundError } = await import("./memberships");
-const { createQuestion, getQuestionById, listQuestionsForGroup } = await import("./questions");
+const {
+  createQuestion,
+  getQuestionById,
+  listQuestionsForGroup,
+  softDeleteQuestion,
+  acceptAnswer,
+  reopenQuestion,
+} = await import("./questions");
+const { applyToGroup, AuthorizationError } = await import("./memberships");
 
 beforeAll(async () => {
   const root = path.resolve(import.meta.dirname, "../..");
@@ -241,5 +249,192 @@ describe("getQuestionById", () => {
     const detail = await getQuestionById(q.id, viewer.id);
     expect(detail.voteScore).toBe(1);
     expect(detail.viewerVote).toBeNull();
+  });
+});
+
+describe("softDeleteQuestion", () => {
+  async function setup(label: string) {
+    const owner = await makeUser(`owner-${label}`);
+    const group = await createGroup(
+      { name: label, slug: uniq(label), autoApprove: true },
+      owner.id,
+    );
+    const author = await makeUser(`author-${label}`);
+    await applyToGroup(group.id, author.id);
+    const q = await createQuestion(
+      { title: `Title ${label}`, body: `Body ${label}` },
+      group.id,
+      author.id,
+    );
+    return { owner, group, author, question: q };
+  }
+
+  it("sets deletedAt when called by the author", async () => {
+    const s = await setup("sda");
+    const result = await softDeleteQuestion(s.question.id, s.author.id);
+    expect(result.id).toBe(s.question.id);
+    expect(result.groupSlug).toBe(s.group.slug);
+    const after = await db.question.findUnique({
+      where: { id: s.question.id },
+    });
+    expect(after!.deletedAt).not.toBeNull();
+  });
+
+  it("sets deletedAt when called by the group owner", async () => {
+    const s = await setup("sdo");
+    await softDeleteQuestion(s.question.id, s.owner.id);
+    const after = await db.question.findUnique({
+      where: { id: s.question.id },
+    });
+    expect(after!.deletedAt).not.toBeNull();
+  });
+
+  it("sets deletedAt when called by a moderator", async () => {
+    const s = await setup("sdm");
+    const mod = await makeUser("mod-sdm");
+    await db.membership.create({
+      data: {
+        groupId: s.group.id,
+        userId: mod.id,
+        role: "moderator",
+        status: "approved",
+      },
+    });
+    await softDeleteQuestion(s.question.id, mod.id);
+    const after = await db.question.findUnique({
+      where: { id: s.question.id },
+    });
+    expect(after!.deletedAt).not.toBeNull();
+  });
+
+  it("throws AuthorizationError for a plain approved member", async () => {
+    const s = await setup("sdp");
+    const member = await makeUser("plain-sdp");
+    await applyToGroup(s.group.id, member.id);
+    await expect(
+      softDeleteQuestion(s.question.id, member.id),
+    ).rejects.toBeInstanceOf(AuthorizationError);
+  });
+
+  it("throws AuthorizationError for a non-member", async () => {
+    const s = await setup("sdn");
+    const stranger = await makeUser("stranger-sdn");
+    await expect(
+      softDeleteQuestion(s.question.id, stranger.id),
+    ).rejects.toBeInstanceOf(AuthorizationError);
+  });
+
+  it("throws NotFoundError when the question is already deleted", async () => {
+    const s = await setup("sdd");
+    await softDeleteQuestion(s.question.id, s.author.id);
+    await expect(
+      softDeleteQuestion(s.question.id, s.author.id),
+    ).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("throws NotFoundError for an unknown id", async () => {
+    const author = await makeUser("nf");
+    await expect(
+      softDeleteQuestion("does-not-exist", author.id),
+    ).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
+
+describe("getQuestionById on deleted questions", () => {
+  it("returns the row with deletedAt set and stripped joins", async () => {
+    const owner = await makeUser("g-del-o");
+    const group = await createGroup(
+      { name: "GDel", slug: uniq("gdel"), autoApprove: true },
+      owner.id,
+    );
+    const q = await createQuestion(
+      { title: "Will be deleted", body: "Body" },
+      group.id,
+      owner.id,
+    );
+    await db.answer.create({
+      data: { questionId: q.id, authorId: owner.id, body: "Once visible." },
+    });
+    await db.question.update({
+      where: { id: q.id },
+      data: { deletedAt: new Date() },
+    });
+
+    const detail = await getQuestionById(q.id, owner.id);
+    expect(detail.id).toBe(q.id);
+    expect(detail.deletedAt).not.toBeNull();
+    expect(detail.answers).toEqual([]);
+    expect(detail.voteScore).toBe(0);
+    expect(detail.viewerVote).toBeNull();
+  });
+});
+
+describe("listQuestionsForGroup excludes soft-deleted", () => {
+  it("filters deletedAt from listings and total count", async () => {
+    const owner = await makeUser("listdel");
+    const group = await createGroup(
+      { name: "ListDel", slug: uniq("ldel"), autoApprove: true },
+      owner.id,
+    );
+    const visible = await createQuestion(
+      { title: "still here", body: "b" },
+      group.id,
+      owner.id,
+    );
+    const hidden = await createQuestion(
+      { title: "tombstone", body: "b" },
+      group.id,
+      owner.id,
+    );
+    await db.question.update({
+      where: { id: hidden.id },
+      data: { deletedAt: new Date() },
+    });
+
+    const page = await listQuestionsForGroup(group.id, { page: 1, per: 10 });
+    expect(page.total).toBe(1);
+    expect(page.items.map((i) => i.id)).toEqual([visible.id]);
+  });
+});
+
+describe("acceptAnswer / reopenQuestion on deleted questions", () => {
+  it("acceptAnswer throws NotFoundError when the question is deleted", async () => {
+    const owner = await makeUser("acc-del");
+    const group = await createGroup(
+      { name: "AD", slug: uniq("ad"), autoApprove: true },
+      owner.id,
+    );
+    const q = await createQuestion(
+      { title: "T", body: "B" },
+      group.id,
+      owner.id,
+    );
+    await db.question.update({
+      where: { id: q.id },
+      data: { deletedAt: new Date() },
+    });
+    await expect(acceptAnswer(q.id, null, owner.id)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
+  });
+
+  it("reopenQuestion throws NotFoundError when the question is deleted", async () => {
+    const owner = await makeUser("ro-del");
+    const group = await createGroup(
+      { name: "RO", slug: uniq("ro"), autoApprove: true },
+      owner.id,
+    );
+    const q = await createQuestion(
+      { title: "T", body: "B" },
+      group.id,
+      owner.id,
+    );
+    await db.question.update({
+      where: { id: q.id },
+      data: { status: "answered", deletedAt: new Date() },
+    });
+    await expect(reopenQuestion(q.id, owner.id)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
   });
 });

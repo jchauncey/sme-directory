@@ -28,9 +28,11 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
   try {
     const question = await db.question.findUnique({
       where: { id },
-      select: { id: true, groupId: true },
+      select: { id: true, groupId: true, deletedAt: true },
     });
-    if (!question) throw new NotFoundError("Question not found.");
+    if (!question || question.deletedAt) {
+      throw new NotFoundError("Question not found.");
+    }
     await assertApprovedMember(question.groupId, session.user.id);
     const answer = await createAnswer(parsed.data, question.id, session.user.id);
     return Response.json({ answer }, { status: 201 });

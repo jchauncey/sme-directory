@@ -92,7 +92,7 @@ export async function listQuestionsByAuthor(
   const skip = (opts.page - 1) * opts.per;
   const [rows, total] = await Promise.all([
     db.question.findMany({
-      where: { authorId: userId },
+      where: { authorId: userId, deletedAt: null },
       orderBy: { createdAt: "desc" },
       skip,
       take: opts.per,
@@ -102,7 +102,7 @@ export async function listQuestionsByAuthor(
         _count: { select: { answers: true } },
       },
     }),
-    db.question.count({ where: { authorId: userId } }),
+    db.question.count({ where: { authorId: userId, deletedAt: null } }),
   ]);
 
   const scores = await voteScoresFor(
@@ -132,7 +132,7 @@ export async function listAnswersByAuthor(
   const skip = (opts.page - 1) * opts.per;
   const [rows, total] = await Promise.all([
     db.answer.findMany({
-      where: { authorId: userId },
+      where: { authorId: userId, question: { deletedAt: null } },
       orderBy: { createdAt: "desc" },
       skip,
       take: opts.per,
@@ -148,7 +148,9 @@ export async function listAnswersByAuthor(
         },
       },
     }),
-    db.answer.count({ where: { authorId: userId } }),
+    db.answer.count({
+      where: { authorId: userId, question: { deletedAt: null } },
+    }),
   ]);
 
   const scores = await voteScoresFor(
@@ -216,7 +218,7 @@ export async function listFavoritesByUser(
   const [questions, answers] = await Promise.all([
     questionIds.length
       ? db.question.findMany({
-          where: { id: { in: questionIds } },
+          where: { id: { in: questionIds }, deletedAt: null },
           select: {
             id: true,
             title: true,
@@ -232,7 +234,10 @@ export async function listFavoritesByUser(
         ),
     answerIds.length
       ? db.answer.findMany({
-          where: { id: { in: answerIds } },
+          where: {
+            id: { in: answerIds },
+            question: { deletedAt: null },
+          },
           select: {
             id: true,
             body: true,

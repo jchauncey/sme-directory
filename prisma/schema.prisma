@@ -88,6 +88,7 @@ model Question {
   body             String
   status           QuestionStatus @default(open)
   acceptedAnswerId String?        @unique
+  deletedAt        DateTime?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -98,6 +99,7 @@ model Question {
 
   @@index([groupId])
   @@index([authorId])
+  @@index([deletedAt])
 }
 
 model Answer {
