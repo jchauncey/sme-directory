@@ -1,5 +1,5 @@
 import { getSession } from "@/lib/auth";
-import { getGroupBySlug, updateGroup } from "@/lib/groups";
+import { archiveGroup, getGroupBySlug, updateGroup } from "@/lib/groups";
 import { updateGroupSchema } from "@/lib/validation/groups";
 import { errorToResponse, unauthorized, validationFailed } from "@/lib/api/errors";
 
@@ -32,6 +32,19 @@ export async function PATCH(req: Request, ctx: Ctx): Promise<Response> {
 
   try {
     const group = await updateGroup(slug, parsed.data, session.user.id);
+    return Response.json({ group });
+  } catch (err) {
+    return errorToResponse(err);
+  }
+}
+
+export async function DELETE(_req: Request, ctx: Ctx): Promise<Response> {
+  const { slug } = await ctx.params;
+  const session = await getSession();
+  if (!session) return unauthorized();
+
+  try {
+    const group = await archiveGroup(slug, session.user.id);
     return Response.json({ group });
   } catch (err) {
     return errorToResponse(err);

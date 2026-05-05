@@ -369,4 +369,47 @@ describe("searchContent", () => {
     expect(after.items.some((i) => i.questionId === q.id)).toBe(false);
     expect(after.total).toBeLessThan(beforeTotal);
   });
+
+  it("excludes content from archived groups", async () => {
+    const author = await makeUser("archSearch");
+    const group = await createGroup(
+      { name: "Arch", slug: uniq("arch"), autoApprove: true },
+      author.id,
+    );
+    const q = await createQuestion(
+      { title: "Numbat sightings on the trail", body: "Spotted a numbat at dawn." },
+      group.id,
+      author.id,
+    );
+    const answer = await db.answer.create({
+      data: { questionId: q.id, authorId: author.id, body: "Numbat populations vary widely." },
+    });
+
+    const before = await searchContent({
+      q: "numbat",
+      scope: "selected",
+      groupIds: [group.id],
+      page: 1,
+      per: 5,
+    });
+    expect(before.items.some((i) => i.questionId === q.id)).toBe(true);
+    expect(
+      before.items.some((i) => i.type === "answer" && i.answerId === answer.id),
+    ).toBe(true);
+
+    await db.group.update({
+      where: { id: group.id },
+      data: { archivedAt: new Date() },
+    });
+
+    const after = await searchContent({
+      q: "numbat",
+      scope: "all",
+      groupIds: [],
+      page: 1,
+      per: 5,
+    });
+    expect(after.items.some((i) => i.questionId === q.id)).toBe(false);
+    expect(after.items.some((i) => i.answerId === answer.id)).toBe(false);
+  });
 });

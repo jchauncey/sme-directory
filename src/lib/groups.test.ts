@@ -16,14 +16,17 @@ process.env["DATABASE_URL"] = `file:${testDbPath}`;
 
 const { db } = await import("./db");
 const {
+  archiveGroup,
+  assertGroupNotArchived,
   createGroup,
   getGroupBySlug,
   getGroupBySlugOrThrow,
   listGroups,
+  unarchiveGroup,
   updateGroup,
   SlugConflictError,
 } = await import("./groups");
-const { AuthorizationError, NotFoundError } = await import("./memberships");
+const { AuthorizationError, ConflictError, NotFoundError } = await import("./memberships");
 
 beforeAll(async () => {
   const root = path.resolve(import.meta.dirname, "../..");
@@ -203,5 +206,75 @@ describe("listGroups", () => {
     expect(indexBig).toBeGreaterThanOrEqual(0);
     expect(indexSmall).toBeGreaterThanOrEqual(0);
     expect(indexBig).toBeLessThan(indexSmall);
+  });
+
+  it("excludes archived groups by default but includes them when includeArchived is set", async () => {
+    const owner = await makeUser("ls-arch");
+    const slug = `ls-arch-${Date.now()}`;
+    const group = await createGroup({ name: "Archy", slug }, owner.id);
+    await archiveGroup(slug, owner.id);
+
+    const defaultList = await listGroups({ sort: "newest" });
+    expect(defaultList.find((g) => g.id === group.id)).toBeUndefined();
+
+    const fullList = await listGroups({ sort: "newest", includeArchived: true });
+    const found = fullList.find((g) => g.id === group.id);
+    expect(found).toBeDefined();
+    expect(found!.archivedAt).not.toBeNull();
+  });
+});
+
+describe("archiveGroup / unarchiveGroup", () => {
+  it("owner can archive then unarchive", async () => {
+    const owner = await makeUser("arch-owner");
+    const slug = `arch-${Date.now()}`;
+    await createGroup({ name: "A", slug }, owner.id);
+    const archived = await archiveGroup(slug, owner.id);
+    expect(archived.archivedAt).not.toBeNull();
+
+    const restored = await unarchiveGroup(slug, owner.id);
+    expect(restored.archivedAt).toBeNull();
+  });
+
+  it("non-owner cannot archive (AuthorizationError)", async () => {
+    const owner = await makeUser("arch-owner2");
+    const stranger = await makeUser("arch-strange");
+    const slug = `arch2-${Date.now()}`;
+    await createGroup({ name: "A", slug }, owner.id);
+    await expect(archiveGroup(slug, stranger.id)).rejects.toBeInstanceOf(AuthorizationError);
+  });
+
+  it("archiveGroup throws ConflictError when already archived", async () => {
+    const owner = await makeUser("arch-double");
+    const slug = `arch-double-${Date.now()}`;
+    await createGroup({ name: "A", slug }, owner.id);
+    await archiveGroup(slug, owner.id);
+    await expect(archiveGroup(slug, owner.id)).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("unarchiveGroup throws ConflictError when not archived", async () => {
+    const owner = await makeUser("arch-noop");
+    const slug = `arch-noop-${Date.now()}`;
+    await createGroup({ name: "A", slug }, owner.id);
+    await expect(unarchiveGroup(slug, owner.id)).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("updateGroup is blocked on archived groups (ConflictError)", async () => {
+    const owner = await makeUser("arch-update");
+    const slug = `arch-update-${Date.now()}`;
+    await createGroup({ name: "A", slug }, owner.id);
+    await archiveGroup(slug, owner.id);
+    await expect(
+      updateGroup(slug, { name: "Renamed" }, owner.id),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("assertGroupNotArchived throws when archived, no-op otherwise", async () => {
+    const owner = await makeUser("arch-assert");
+    const slug = `arch-assert-${Date.now()}`;
+    const group = await createGroup({ name: "A", slug }, owner.id);
+    await expect(assertGroupNotArchived(group.id)).resolves.toBeUndefined();
+    await archiveGroup(slug, owner.id);
+    await expect(assertGroupNotArchived(group.id)).rejects.toBeInstanceOf(ConflictError);
   });
 });

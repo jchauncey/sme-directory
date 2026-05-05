@@ -1,6 +1,7 @@
 import "server-only";
 import type { Answer } from "@prisma/client";
 import { db } from "@/lib/db";
+import { assertGroupNotArchived } from "@/lib/groups";
 import {
   AuthorizationError,
   NotFoundError,
@@ -51,6 +52,7 @@ export async function updateAnswer(
   if (existing.authorId !== userId) {
     throw new AuthorizationError("Only the answer's author can edit it.");
   }
+  await assertGroupNotArchived(existing.question.groupId);
   return db.answer.update({
     where: { id: answerId },
     data: { body: input.body },

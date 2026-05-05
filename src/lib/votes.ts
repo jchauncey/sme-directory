@@ -1,6 +1,7 @@
 import "server-only";
 import { Prisma, type TargetType } from "@prisma/client";
 import { db } from "@/lib/db";
+import { assertGroupNotArchived } from "@/lib/groups";
 import {
   AuthorizationError,
   NotFoundError,
@@ -78,6 +79,7 @@ export async function castVote(
     throw new AuthorizationError("You cannot vote on your own content.");
   }
   await assertApprovedMember(groupId, userId);
+  await assertGroupNotArchived(groupId);
 
   const existing = await db.vote.findUnique({
     where: {

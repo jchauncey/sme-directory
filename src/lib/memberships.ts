@@ -95,9 +95,12 @@ export async function assertApprovedMember(groupId: string, userId: string): Pro
 export async function applyToGroup(groupId: string, userId: string): Promise<Membership> {
   const group = await db.group.findUnique({
     where: { id: groupId },
-    select: { autoApprove: true },
+    select: { autoApprove: true, archivedAt: true },
   });
   if (!group) throw new NotFoundError("Group not found.");
+  if (group.archivedAt) {
+    throw new ConflictError("This group is archived and is not accepting new applications.");
+  }
 
   const existing = await getMembership(groupId, userId);
   if (existing) {
@@ -127,6 +130,14 @@ export async function setMembershipStatus(
   actorUserId: string,
 ): Promise<Membership> {
   await assertOwnerOrModerator(groupId, actorUserId);
+  const group = await db.group.findUnique({
+    where: { id: groupId },
+    select: { archivedAt: true },
+  });
+  if (!group) throw new NotFoundError("Group not found.");
+  if (group.archivedAt) {
+    throw new ConflictError("This group is archived and is read-only.");
+  }
   const target = await getMembership(groupId, targetUserId);
   if (!target) throw new NotFoundError("Membership not found.");
   if (target.role === "owner") {

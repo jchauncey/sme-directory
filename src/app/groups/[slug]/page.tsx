@@ -50,15 +50,32 @@ export default async function GroupDetailPage({ params }: Props) {
 
   const isOwner = membership?.role === "owner" && membership.status === "approved";
   const isApproved = membership?.status === "approved";
+  const isArchived = group.archivedAt != null;
   const memberLabel = memberCount === 1 ? "1 member" : `${memberCount} members`;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      {isArchived ? (
+        <Card className="border-amber-300 bg-amber-50 dark:border-amber-700/60 dark:bg-amber-900/20">
+          <CardContent className="py-3 text-sm">
+            <strong>This group is archived.</strong>{" "}
+            It is read-only — no new questions, answers, votes, or applications. Existing
+            content remains visible.
+          </CardContent>
+        </Card>
+      ) : null}
       <Card>
         <CardHeader className="border-b">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
-              <CardTitle className="text-xl">{group.name}</CardTitle>
+              <CardTitle className="text-xl">
+                {group.name}
+                {isArchived ? (
+                  <span className="ml-2 rounded-md border border-border px-1.5 py-0.5 align-middle text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Archived
+                  </span>
+                ) : null}
+              </CardTitle>
               <CardDescription>
                 <span className="font-mono text-xs">{group.slug}</span>
                 {" · "}
@@ -91,13 +108,17 @@ export default async function GroupDetailPage({ params }: Props) {
           <p className="text-xs text-muted-foreground">
             Owner: {group.createdBy.name ?? group.createdBy.email}
           </p>
-          <MembershipActions
-            slug={group.slug}
-            isAuthenticated={Boolean(session)}
-            currentUserId={session?.user.id ?? null}
-            membership={membership ? { role: membership.role, status: membership.status } : null}
-          />
-          {isApproved ? (
+          {isArchived ? null : (
+            <MembershipActions
+              slug={group.slug}
+              isAuthenticated={Boolean(session)}
+              currentUserId={session?.user.id ?? null}
+              membership={
+                membership ? { role: membership.role, status: membership.status } : null
+              }
+            />
+          )}
+          {isApproved && !isArchived ? (
             <Button
               variant="default"
               size="sm"
