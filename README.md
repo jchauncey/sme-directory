@@ -31,6 +31,10 @@ After seeding, dev sign-in works with any of:
 `alice@example.com`, `bob@example.com`, `carol@example.com`, `dave@example.com`, `eve@example.com`.
 The seed is idempotent — re-running it converges on the same dataset.
 
+For the full test-data reference (membership matrix, edge-case fixtures,
+notification read/unread split, search keywords planted for FTS testing),
+see [`prisma/README.md`](prisma/README.md).
+
 ## Scripts
 
 | Script                 | What it does                                        |
