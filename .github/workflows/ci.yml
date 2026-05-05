@@ -28,12 +28,16 @@ jobs:
           node-version: 20
           cache: npm
 
-      # Using `npm install` over `npm ci` to work around npm/cli#4828:
-      # rolldown's platform-specific optional bindings (used by vitest 4.x)
-      # aren't recorded in package-lock.json for non-host platforms, so
-      # `npm ci` on Linux fails to install @rolldown/binding-linux-x64-gnu.
+      # Workaround for npm/cli#4828: rolldown's platform-specific optional
+      # bindings (used by vitest 4.x) aren't recorded in package-lock.json
+      # for non-host platforms. `npm ci` and `npm install` both honor the
+      # broken lockfile and skip @rolldown/binding-linux-x64-gnu on Linux.
+      # Deleting the lockfile forces a fresh resolve for the runner's
+      # platform; this is the workaround rolldown itself recommends.
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: |
+          rm -f package-lock.json
+          npm install --no-audit --no-fund
 
       - name: Lint
         run: npm run lint
