@@ -19,6 +19,13 @@ export const createQuestionSchema = z.object({
 
 export type CreateQuestionInput = z.input<typeof createQuestionSchema>;
 
+export const updateQuestionSchema = z.object({
+  title: questionTitleSchema,
+  body: questionBodySchema,
+});
+
+export type UpdateQuestionInput = z.input<typeof updateQuestionSchema>;
+
 export const questionListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   per: z.coerce.number().int().min(1).max(50).default(20),

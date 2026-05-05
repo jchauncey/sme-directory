@@ -1,5 +1,5 @@
 /**
- * GET /api/questions/[id] route handler tests.
+ * GET + PATCH + DELETE /api/questions/[id] route handler tests.
  */
 
 import fs from "node:fs";
@@ -37,7 +37,7 @@ const auth = await import("@/lib/auth");
 const { db } = await import("@/lib/db");
 const { createGroup } = await import("@/lib/groups");
 const { applyToGroup } = await import("@/lib/memberships");
-const { GET, DELETE } = await import("./route");
+const { GET, PATCH, DELETE } = await import("./route");
 
 beforeAll(async () => {
   const root = path.resolve(import.meta.dirname, "../../../../..");
@@ -76,6 +76,22 @@ function delReq(id: string): Request {
   return new Request(`http://x/api/questions/${id}`, { method: "DELETE" });
 }
 
+function jsonReq(url: string, method: string, body?: unknown): Request {
+  return new Request(url, {
+    method,
+    headers: { "content-type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+function rawReq(url: string, method: string, body: string): Request {
+  return new Request(url, {
+    method,
+    headers: { "content-type": "application/json" },
+    body,
+  });
+}
+
 type DeleteSetup = {
   groupId: string;
   questionId: string;
@@ -112,6 +128,42 @@ async function setupForDelete(slug: string): Promise<DeleteSetup> {
     groupId: group.id,
     questionId: question.id,
     ownerId: ownerSess.user.id,
+    authorId: authorSess.user.id,
+  };
+}
+
+type PatchSetup = {
+  groupId: string;
+  questionId: string;
+  authorId: string;
+};
+
+async function setupQuestion(slug: string): Promise<PatchSetup> {
+  const ownerEmail = `o-${slug}@example.com`;
+  await auth.signIn(ownerEmail);
+  const ownerSess = (await auth.getSession())!;
+  const group = await createGroup(
+    { name: slug, slug, autoApprove: true },
+    ownerSess.user.id,
+  );
+
+  cookieStore.clear();
+  const authorEmail = `a-${slug}-${Math.random()}@example.com`;
+  await auth.signIn(authorEmail);
+  const authorSess = (await auth.getSession())!;
+  await applyToGroup(group.id, authorSess.user.id);
+  const question = await db.question.create({
+    data: {
+      groupId: group.id,
+      authorId: authorSess.user.id,
+      title: "Original question title",
+      body: "Original question body.",
+    },
+  });
+
+  return {
+    groupId: group.id,
+    questionId: question.id,
     authorId: authorSess.user.id,
   };
 }
@@ -264,5 +316,112 @@ describe("DELETE /api/questions/[id]", () => {
 
     const res = await DELETE(delReq(setup.questionId), ctx(setup.questionId));
     expect(res.status).toBe(404);
+  });
+});
+
+describe("PATCH /api/questions/[id]", () => {
+  it("returns 401 when unauthenticated", async () => {
+    const res = await PATCH(
+      jsonReq("http://x/api/questions/abc", "PATCH", {
+        title: "A new title here",
+        body: "Some new body content.",
+      }),
+      ctx("abc"),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 404 when question is unknown", async () => {
+    await auth.signIn(`u-${Date.now()}@example.com`);
+    const res = await PATCH(
+      jsonReq("http://x/api/questions/missing", "PATCH", {
+        title: "A new title here",
+        body: "Some new body content.",
+      }),
+      ctx("missing"),
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 when JSON body is malformed", async () => {
+    await auth.signIn(`m-${Date.now()}@example.com`);
+    const res = await PATCH(
+      rawReq("http://x/api/questions/anything", "PATCH", "{ not json"),
+      ctx("anything"),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when title is too short", async () => {
+    const setup = await setupQuestion(`v1-${Date.now()}`);
+    const res = await PATCH(
+      jsonReq(`http://x/api/questions/${setup.questionId}`, "PATCH", {
+        title: "hi",
+        body: "Some valid body content.",
+      }),
+      ctx(setup.questionId),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when body is empty", async () => {
+    const setup = await setupQuestion(`v2-${Date.now()}`);
+    const res = await PATCH(
+      jsonReq(`http://x/api/questions/${setup.questionId}`, "PATCH", {
+        title: "A perfectly valid title",
+        body: "",
+      }),
+      ctx(setup.questionId),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 403 when caller is not the author", async () => {
+    const setup = await setupQuestion(`f1-${Date.now()}`);
+    cookieStore.clear();
+    await auth.signIn(`other-${Date.now()}-${Math.random()}@example.com`);
+    const res = await PATCH(
+      jsonReq(`http://x/api/questions/${setup.questionId}`, "PATCH", {
+        title: "Stranger's edited title",
+        body: "Stranger's edited body.",
+      }),
+      ctx(setup.questionId),
+    );
+    expect(res.status).toBe(403);
+
+    const stillThere = await db.question.findUnique({
+      where: { id: setup.questionId },
+    });
+    expect(stillThere!.title).toBe("Original question title");
+    expect(stillThere!.body).toBe("Original question body.");
+  });
+
+  it("returns 200 with the updated question for the author", async () => {
+    const setup = await setupQuestion(`h1-${Date.now()}`);
+    const before = await db.question.findUnique({
+      where: { id: setup.questionId },
+    });
+    await new Promise((r) => setTimeout(r, 5));
+
+    const res = await PATCH(
+      jsonReq(`http://x/api/questions/${setup.questionId}`, "PATCH", {
+        title: "Updated question title",
+        body: "Updated question body.",
+      }),
+      ctx(setup.questionId),
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.question.title).toBe("Updated question title");
+    expect(json.question.body).toBe("Updated question body.");
+
+    const after = await db.question.findUnique({
+      where: { id: setup.questionId },
+    });
+    expect(after!.title).toBe("Updated question title");
+    expect(after!.body).toBe("Updated question body.");
+    expect(after!.updatedAt.getTime()).toBeGreaterThan(
+      before!.updatedAt.getTime(),
+    );
   });
 });
