@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./ci.db
+      AUTH_SECRET: ci-dummy-secret-not-used-at-runtime-xx
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Workaround for npm/cli#4828: rolldown's platform-specific optional
+      # bindings (used by vitest 4.x) aren't recorded in package-lock.json
+      # for non-host platforms. `npm ci` and `npm install` both honor the
+      # broken lockfile and skip @rolldown/binding-linux-x64-gnu on Linux.
+      # Deleting the lockfile forces a fresh resolve for the runner's
+      # platform; this is the workaround rolldown itself recommends.
+      - name: Install dependencies
+        run: |
+          rm -f package-lock.json
+          npm install --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Prisma validate
+        run: npx prisma validate
+
+      - name: Unit tests
+        run: npm run test
