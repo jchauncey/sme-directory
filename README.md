@@ -47,6 +47,21 @@ The seed is idempotent — re-running it converges on the same dataset.
 | `npm run db:seed`      | Populate the DB with sample users, groups, and Q&A  |
 | `npm run db:studio`    | Open Prisma Studio                                  |
 
+## Continuous Integration
+
+`.github/workflows/ci.yml` runs on every PR targeting `main` (and on pushes to `main`). It executes `npm ci`, `npm run lint`, `npm run typecheck`, `npx prisma validate`, and `npm run test` on Node 20.
+
+### Required status checks
+
+Once CI has run at least once on the repo, enforce it on `main`:
+
+1. Go to **Settings → Branches** and add (or edit) the branch protection rule for `main`.
+2. Enable **Require status checks to pass before merging**.
+3. In the search box, add the `ci` check.
+4. (Recommended) Enable **Require branches to be up to date before merging**.
+
+The `ci` check name only appears in the dropdown after the workflow has completed at least one run, so open a throwaway PR first if needed.
+
 ## Project layout
 
 ```
