@@ -10,6 +10,7 @@ import { AnswerActions } from "./answer-actions";
 import { VoteButton } from "./vote-button";
 import { FavoriteButton } from "./favorite-button";
 import { QuestionResolveControls } from "./question-resolve-controls";
+import { QuestionDeleteButton } from "./question-delete-button";
 import { AcceptAnswerButton } from "./accept-answer-button";
 
 type Props = { params: Promise<{ id: string }> };
@@ -32,6 +33,46 @@ export default async function QuestionDetailPage({ params }: Props) {
     throw err;
   }
 
+  if (question.deletedAt) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-4 py-8">
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle className="text-2xl text-muted-foreground line-through">
+              {question.title}
+            </CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Asked by {authorLabel(question.author)} in{" "}
+              <Link
+                href={`/groups/${question.group.slug}`}
+                className="underline"
+              >
+                {question.group.name}
+              </Link>
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2 pt-4">
+            <p className="text-sm text-muted-foreground">
+              This question has been deleted on{" "}
+              <time dateTime={question.deletedAt.toISOString()}>
+                {question.deletedAt.toLocaleDateString()}
+              </time>
+              . It is no longer listed in the group, search, or notifications.
+            </p>
+            <p className="text-sm">
+              <Link
+                href={`/groups/${question.group.slug}`}
+                className="underline"
+              >
+                Back to {question.group.name}
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const viewerMembership = currentUserId
     ? await getMembership(question.group.id, currentUserId)
     : null;
@@ -41,6 +82,9 @@ export default async function QuestionDetailPage({ params }: Props) {
     (viewerMembership?.role === "owner" || viewerMembership?.role === "moderator");
   const canDeleteAny = isModOrOwner;
   const canResolve =
+    currentUserId !== null &&
+    (question.author.id === currentUserId || isModOrOwner);
+  const canDeleteQuestion =
     currentUserId !== null &&
     (question.author.id === currentUserId || isModOrOwner);
 
@@ -62,11 +106,16 @@ export default async function QuestionDetailPage({ params }: Props) {
         <CardHeader className="border-b">
           <div className="flex items-start justify-between gap-3">
             <CardTitle className="text-2xl">{question.title}</CardTitle>
-            <QuestionResolveControls
-              questionId={question.id}
-              status={question.status}
-              canResolve={canResolve}
-            />
+            <div className="flex flex-col items-end gap-2">
+              <QuestionResolveControls
+                questionId={question.id}
+                status={question.status}
+                canResolve={canResolve}
+              />
+              {canDeleteQuestion ? (
+                <QuestionDeleteButton questionId={question.id} />
+              ) : null}
+            </div>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Asked by {authorLabel(question.author)} in{" "}

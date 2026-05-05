@@ -55,16 +55,16 @@ async function assertTargetExists(
   if (targetType === "question") {
     const q = await db.question.findUnique({
       where: { id: targetId },
-      select: { id: true },
+      select: { id: true, deletedAt: true },
     });
-    if (!q) throw new NotFoundError("Question not found.");
+    if (!q || q.deletedAt) throw new NotFoundError("Question not found.");
     return;
   }
   const a = await db.answer.findUnique({
     where: { id: targetId },
-    select: { id: true },
+    select: { id: true, question: { select: { deletedAt: true } } },
   });
-  if (!a) throw new NotFoundError("Answer not found.");
+  if (!a || a.question.deletedAt) throw new NotFoundError("Answer not found.");
 }
 
 export async function toggleFavorite(
@@ -146,7 +146,7 @@ export async function listFavoritesForUser(
     questionIds.length === 0
       ? Promise.resolve([])
       : db.question.findMany({
-          where: { id: { in: questionIds } },
+          where: { id: { in: questionIds }, deletedAt: null },
           include: {
             author: { select: { id: true, email: true, name: true } },
             group: { select: { id: true, slug: true, name: true } },
@@ -155,7 +155,10 @@ export async function listFavoritesForUser(
     answerIds.length === 0
       ? Promise.resolve([])
       : db.answer.findMany({
-          where: { id: { in: answerIds } },
+          where: {
+            id: { in: answerIds },
+            question: { deletedAt: null },
+          },
           include: {
             author: { select: { id: true, email: true, name: true } },
             question: { select: { id: true, title: true } },

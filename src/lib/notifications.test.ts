@@ -161,6 +161,60 @@ describe("listForUser", () => {
     expect(result.unreadCount).toBe(1);
   });
 
+  it("excludes notifications whose referenced question is soft-deleted", async () => {
+    const u = await makeUser("delU");
+    const owner = await makeUser("delOwner");
+    const group = await createGroup(
+      { name: "DN", slug: uniq("dn"), autoApprove: true },
+      owner.id,
+    );
+    const visible = await createQuestion(
+      { title: "Visible Q", body: "b" },
+      group.id,
+      owner.id,
+    );
+    const hidden = await createQuestion(
+      { title: "Hidden Q", body: "b" },
+      group.id,
+      owner.id,
+    );
+    await db.notification.create({
+      data: {
+        userId: u.id,
+        type: QUESTION_CREATED,
+        payload: JSON.stringify({
+          questionId: visible.id,
+          questionTitle: "Visible Q",
+          groupSlug: group.slug,
+          groupName: group.name,
+          authorName: "x",
+        }),
+      },
+    });
+    await db.notification.create({
+      data: {
+        userId: u.id,
+        type: QUESTION_CREATED,
+        payload: JSON.stringify({
+          questionId: hidden.id,
+          questionTitle: "Hidden Q",
+          groupSlug: group.slug,
+          groupName: group.name,
+          authorName: "x",
+        }),
+      },
+    });
+    await db.question.update({
+      where: { id: hidden.id },
+      data: { deletedAt: new Date() },
+    });
+
+    const result = await listForUser(u.id);
+    const ids = result.items.map((i) => i.payload.questionId);
+    expect(ids).toContain(visible.id);
+    expect(ids).not.toContain(hidden.id);
+  });
+
   it("respects the limit option", async () => {
     const u = await makeUser("limU");
     for (let i = 0; i < 3; i += 1) {

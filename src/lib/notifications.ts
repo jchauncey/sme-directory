@@ -67,7 +67,27 @@ export async function listForUser(
     }),
     db.notification.count({ where: { userId, readAt: null } }),
   ]);
-  return { items: rows.map(parsePayload), unreadCount };
+
+  const parsed = rows.map(parsePayload);
+  const referencedQuestionIds = Array.from(
+    new Set(parsed.map((p) => p.payload.questionId)),
+  );
+  const deletedIds = referencedQuestionIds.length
+    ? new Set(
+        (
+          await db.question.findMany({
+            where: {
+              id: { in: referencedQuestionIds },
+              deletedAt: { not: null },
+            },
+            select: { id: true },
+          })
+        ).map((q) => q.id),
+      )
+    : new Set<string>();
+
+  const items = parsed.filter((p) => !deletedIds.has(p.payload.questionId));
+  return { items, unreadCount };
 }
 
 export async function markRead(

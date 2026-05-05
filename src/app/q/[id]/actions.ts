@@ -12,7 +12,7 @@ import {
   deleteAnswer,
   updateAnswer,
 } from "@/lib/answers";
-import { acceptAnswer, reopenQuestion } from "@/lib/questions";
+import { acceptAnswer, reopenQuestion, softDeleteQuestion } from "@/lib/questions";
 import { db } from "@/lib/db";
 import {
   createAnswerSchema,
@@ -53,9 +53,9 @@ export async function createAnswerAction(
   try {
     const question = await db.question.findUnique({
       where: { id: questionId },
-      select: { id: true, groupId: true },
+      select: { id: true, groupId: true, deletedAt: true },
     });
-    if (!question) {
+    if (!question || question.deletedAt) {
       return { error: "Question not found.", values: raw };
     }
     await assertApprovedMember(question.groupId, session.user.id);
@@ -180,6 +180,40 @@ export async function reopenQuestionAction(
   }
 
   revalidatePath(`/q/${questionId}`);
+  return { ok: true };
+}
+
+export type DeleteQuestionResult = { error?: string; ok?: boolean };
+
+export async function deleteQuestionAction(
+  questionId: string,
+): Promise<DeleteQuestionResult> {
+  const session = await getSession();
+  if (!session) {
+    return { error: "You must be signed in to delete a question." };
+  }
+
+  let groupSlug: string | null = null;
+  try {
+    const result = await softDeleteQuestion(questionId, session.user.id);
+    groupSlug = result.groupSlug;
+  } catch (err) {
+    if (err instanceof AuthorizationError) {
+      return {
+        error:
+          "Only the question's author or a group moderator/owner can delete this question.",
+      };
+    }
+    if (err instanceof NotFoundError) {
+      return { error: err.message };
+    }
+    return {
+      error: err instanceof Error ? err.message : "Could not delete question.",
+    };
+  }
+
+  revalidatePath(`/q/${questionId}`);
+  if (groupSlug) revalidatePath(`/groups/${groupSlug}`);
   return { ok: true };
 }
 

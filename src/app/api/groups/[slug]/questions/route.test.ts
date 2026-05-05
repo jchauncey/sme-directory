@@ -243,4 +243,43 @@ describe("GET /api/groups/[slug]/questions", () => {
     );
     expect(res.status).toBe(400);
   });
+
+  it("excludes soft-deleted questions from the listing and total count", async () => {
+    const ownerEmail = `gd-${Date.now()}@example.com`;
+    await auth.signIn(ownerEmail);
+    const ownerSess = (await auth.getSession())!;
+    const slug = `gdel-${Date.now()}`;
+    const group = await createGroup(
+      { name: "GDel", slug, autoApprove: true },
+      ownerSess.user.id,
+    );
+    const visible = await db.question.create({
+      data: {
+        groupId: group.id,
+        authorId: ownerSess.user.id,
+        title: "still here",
+        body: "body",
+      },
+    });
+    const deleted = await db.question.create({
+      data: {
+        groupId: group.id,
+        authorId: ownerSess.user.id,
+        title: "tombstone",
+        body: "body",
+        deletedAt: new Date(),
+      },
+    });
+
+    cookieStore.clear();
+    const res = await GET(
+      jsonReq(`http://x/api/groups/${slug}/questions?page=1&per=10`, "GET"),
+      ctx(slug),
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.total).toBe(1);
+    expect(json.items.map((i: { id: string }) => i.id)).toEqual([visible.id]);
+    expect(json.items.find((i: { id: string }) => i.id === deleted.id)).toBeUndefined();
+  });
 });

@@ -122,6 +122,7 @@ export async function searchContent(opts: SearchOptions): Promise<SearchResultsP
         FROM question_fts
         JOIN "Question" q ON q.id = question_fts.id
         WHERE question_fts MATCH ${expr}
+          AND q."deletedAt" IS NULL
         ${groupFilterQuestion}
         ORDER BY score ASC, created_at DESC
         LIMIT ${fetchLimit}
@@ -140,6 +141,7 @@ export async function searchContent(opts: SearchOptions): Promise<SearchResultsP
         JOIN "Answer" a ON a.id = answer_fts.id
         JOIN "Question" q ON q.id = a."questionId"
         WHERE answer_fts MATCH ${expr}
+          AND q."deletedAt" IS NULL
         ${groupFilterQuestion}
         ORDER BY score ASC, created_at DESC
         LIMIT ${fetchLimit}
@@ -149,6 +151,7 @@ export async function searchContent(opts: SearchOptions): Promise<SearchResultsP
         FROM question_fts
         JOIN "Question" q ON q.id = question_fts.id
         WHERE question_fts MATCH ${expr}
+          AND q."deletedAt" IS NULL
         ${groupFilterQuestion}
       `),
       db.$queryRaw<{ n: number | bigint }[]>(Prisma.sql`
@@ -157,6 +160,7 @@ export async function searchContent(opts: SearchOptions): Promise<SearchResultsP
         JOIN "Answer" a ON a.id = answer_fts.id
         JOIN "Question" q ON q.id = a."questionId"
         WHERE answer_fts MATCH ${expr}
+          AND q."deletedAt" IS NULL
         ${groupFilterQuestion}
       `),
     ]);

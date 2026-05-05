@@ -321,4 +321,52 @@ describe("searchContent", () => {
     });
     expect(after.items.some((i) => i.questionId === q.id)).toBe(false);
   });
+
+  it("excludes soft-deleted questions and their answers", async () => {
+    const author = await makeUser("softdel");
+    const group = await createGroup(
+      { name: "SD", slug: uniq("sd"), autoApprove: true },
+      author.id,
+    );
+    const q = await createQuestion(
+      { title: "Quokka habitat survey", body: "hidden after delete" },
+      group.id,
+      author.id,
+    );
+    const answer = await db.answer.create({
+      data: {
+        questionId: q.id,
+        authorId: author.id,
+        body: "Quokka colonies are stable.",
+      },
+    });
+
+    const before = await searchContent({
+      q: "quokka",
+      scope: "selected",
+      groupIds: [group.id],
+      page: 1,
+      per: 5,
+    });
+    expect(before.items.some((i) => i.questionId === q.id)).toBe(true);
+    expect(
+      before.items.some((i) => i.type === "answer" && i.answerId === answer.id),
+    ).toBe(true);
+    const beforeTotal = before.total;
+
+    await db.question.update({
+      where: { id: q.id },
+      data: { deletedAt: new Date() },
+    });
+
+    const after = await searchContent({
+      q: "quokka",
+      scope: "selected",
+      groupIds: [group.id],
+      page: 1,
+      per: 5,
+    });
+    expect(after.items.some((i) => i.questionId === q.id)).toBe(false);
+    expect(after.total).toBeLessThan(beforeTotal);
+  });
 });
