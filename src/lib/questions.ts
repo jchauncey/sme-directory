@@ -3,6 +3,7 @@ import type { Answer, Question, User } from "@prisma/client";
 import { db } from "@/lib/db";
 import {
   AuthorizationError,
+  ConflictError,
   NotFoundError,
   isOwnerOrModerator,
 } from "@/lib/memberships";
@@ -69,11 +70,19 @@ export async function updateQuestion(
 ): Promise<Question> {
   const existing = await db.question.findUnique({
     where: { id: questionId },
-    select: { id: true, authorId: true },
+    select: {
+      id: true,
+      authorId: true,
+      deletedAt: true,
+      group: { select: { archivedAt: true } },
+    },
   });
-  if (!existing) throw new NotFoundError("Question not found.");
+  if (!existing || existing.deletedAt) throw new NotFoundError("Question not found.");
   if (existing.authorId !== userId) {
     throw new AuthorizationError("Only the question's author can edit it.");
+  }
+  if (existing.group.archivedAt) {
+    throw new ConflictError("This group is archived and is read-only.");
   }
   return db.question.update({
     where: { id: questionId },
@@ -222,10 +231,19 @@ export async function acceptAnswer(
 ): Promise<Question> {
   const question = await db.question.findUnique({
     where: { id: questionId },
-    select: { id: true, authorId: true, groupId: true, deletedAt: true },
+    select: {
+      id: true,
+      authorId: true,
+      groupId: true,
+      deletedAt: true,
+      group: { select: { archivedAt: true } },
+    },
   });
   if (!question || question.deletedAt) {
     throw new NotFoundError("Question not found.");
+  }
+  if (question.group.archivedAt) {
+    throw new ConflictError("This group is archived and is read-only.");
   }
 
   await assertCanResolveQuestion(question, userId);
@@ -252,10 +270,19 @@ export async function reopenQuestion(
 ): Promise<Question> {
   const question = await db.question.findUnique({
     where: { id: questionId },
-    select: { id: true, authorId: true, groupId: true, deletedAt: true },
+    select: {
+      id: true,
+      authorId: true,
+      groupId: true,
+      deletedAt: true,
+      group: { select: { archivedAt: true } },
+    },
   });
   if (!question || question.deletedAt) {
     throw new NotFoundError("Question not found.");
+  }
+  if (question.group.archivedAt) {
+    throw new ConflictError("This group is archived and is read-only.");
   }
 
   await assertCanResolveQuestion(question, userId);

@@ -121,8 +121,10 @@ export async function searchContent(opts: SearchOptions): Promise<SearchResultsP
           bm25(question_fts) AS score
         FROM question_fts
         JOIN "Question" q ON q.id = question_fts.id
+        JOIN "Group" g ON g.id = q."groupId"
         WHERE question_fts MATCH ${expr}
           AND q."deletedAt" IS NULL
+          AND g."archivedAt" IS NULL
         ${groupFilterQuestion}
         ORDER BY score ASC, created_at DESC
         LIMIT ${fetchLimit}
@@ -140,8 +142,10 @@ export async function searchContent(opts: SearchOptions): Promise<SearchResultsP
         FROM answer_fts
         JOIN "Answer" a ON a.id = answer_fts.id
         JOIN "Question" q ON q.id = a."questionId"
+        JOIN "Group" g ON g.id = q."groupId"
         WHERE answer_fts MATCH ${expr}
           AND q."deletedAt" IS NULL
+          AND g."archivedAt" IS NULL
         ${groupFilterQuestion}
         ORDER BY score ASC, created_at DESC
         LIMIT ${fetchLimit}
@@ -150,8 +154,10 @@ export async function searchContent(opts: SearchOptions): Promise<SearchResultsP
         SELECT COUNT(*) AS n
         FROM question_fts
         JOIN "Question" q ON q.id = question_fts.id
+        JOIN "Group" g ON g.id = q."groupId"
         WHERE question_fts MATCH ${expr}
           AND q."deletedAt" IS NULL
+          AND g."archivedAt" IS NULL
         ${groupFilterQuestion}
       `),
       db.$queryRaw<{ n: number | bigint }[]>(Prisma.sql`
@@ -159,8 +165,10 @@ export async function searchContent(opts: SearchOptions): Promise<SearchResultsP
         FROM answer_fts
         JOIN "Answer" a ON a.id = answer_fts.id
         JOIN "Question" q ON q.id = a."questionId"
+        JOIN "Group" g ON g.id = q."groupId"
         WHERE answer_fts MATCH ${expr}
           AND q."deletedAt" IS NULL
+          AND g."archivedAt" IS NULL
         ${groupFilterQuestion}
       `),
     ]);

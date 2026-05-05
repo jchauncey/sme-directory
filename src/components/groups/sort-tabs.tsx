@@ -2,18 +2,32 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { ListGroupsSort } from "@/lib/groups";
 
-const TABS: ReadonlyArray<{ value: ListGroupsSort; label: string; href: string }> = [
-  { value: "newest", label: "Newest", href: "/groups" },
-  { value: "members", label: "Most members", href: "/groups?sort=members" },
+const TABS: ReadonlyArray<{ value: ListGroupsSort; label: string }> = [
+  { value: "newest", label: "Newest" },
+  { value: "members", label: "Most members" },
 ];
 
-export function SortTabs({ active }: { active: ListGroupsSort }) {
+function buildHref(sort: ListGroupsSort, includeArchived: boolean): string {
+  const params = new URLSearchParams();
+  if (sort === "members") params.set("sort", "members");
+  if (includeArchived) params.set("includeArchived", "1");
+  const qs = params.toString();
+  return qs ? `/groups?${qs}` : "/groups";
+}
+
+export function SortTabs({
+  active,
+  includeArchived,
+}: {
+  active: ListGroupsSort;
+  includeArchived: boolean;
+}) {
   return (
     <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-background p-1">
       {TABS.map((t) => (
         <Link
           key={t.value}
-          href={t.href}
+          href={buildHref(t.value, includeArchived)}
           aria-current={t.value === active ? "page" : undefined}
           className={cn(
             "rounded-md px-3 py-1 text-sm transition-colors",

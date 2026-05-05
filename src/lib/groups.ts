@@ -2,7 +2,7 @@ import "server-only";
 import type { Group, User } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { assertOwner, NotFoundError } from "@/lib/memberships";
+import { assertOwner, ConflictError, NotFoundError } from "@/lib/memberships";
 import type { CreateGroupInput, UpdateGroupInput } from "@/lib/validation/groups";
 
 export class SlugConflictError extends Error {
@@ -60,19 +60,26 @@ export type GroupListItem = {
   description: string | null;
   memberCount: number;
   createdAt: Date;
+  archivedAt: Date | null;
 };
 
 export type ListGroupsSort = "newest" | "members";
 
-export async function listGroups(opts: { sort: ListGroupsSort }): Promise<GroupListItem[]> {
+export async function listGroups(opts: {
+  sort: ListGroupsSort;
+  includeArchived?: boolean;
+}): Promise<GroupListItem[]> {
+  const where = opts.includeArchived ? {} : { archivedAt: null };
   const [groups, counts] = await Promise.all([
     db.group.findMany({
+      where,
       select: {
         id: true,
         slug: true,
         name: true,
         description: true,
         createdAt: true,
+        archivedAt: true,
       },
     }),
     db.membership.groupBy({
@@ -90,6 +97,7 @@ export async function listGroups(opts: { sort: ListGroupsSort }): Promise<GroupL
     name: g.name,
     description: g.description,
     createdAt: g.createdAt,
+    archivedAt: g.archivedAt,
     memberCount: countByGroupId.get(g.id) ?? 0,
   }));
 
@@ -127,9 +135,47 @@ export async function updateGroup(
 ): Promise<Group> {
   const group = await getGroupBySlugOrThrow(slug);
   await assertOwner(group.id, actorUserId);
+  if (group.archivedAt) {
+    throw new ConflictError("This group is archived and is read-only.");
+  }
   const data: Prisma.GroupUpdateInput = {};
   if (input.name !== undefined) data.name = input.name;
   if (input.description !== undefined) data.description = input.description;
   if (input.autoApprove !== undefined) data.autoApprove = input.autoApprove;
   return db.group.update({ where: { id: group.id }, data });
+}
+
+export async function assertGroupNotArchived(groupId: string): Promise<void> {
+  const group = await db.group.findUnique({
+    where: { id: groupId },
+    select: { archivedAt: true },
+  });
+  if (!group) throw new NotFoundError("Group not found.");
+  if (group.archivedAt) {
+    throw new ConflictError("This group is archived and is read-only.");
+  }
+}
+
+export async function archiveGroup(slug: string, actorUserId: string): Promise<Group> {
+  const group = await getGroupBySlugOrThrow(slug);
+  await assertOwner(group.id, actorUserId);
+  if (group.archivedAt) {
+    throw new ConflictError("Group is already archived.");
+  }
+  return db.group.update({
+    where: { id: group.id },
+    data: { archivedAt: new Date() },
+  });
+}
+
+export async function unarchiveGroup(slug: string, actorUserId: string): Promise<Group> {
+  const group = await getGroupBySlugOrThrow(slug);
+  await assertOwner(group.id, actorUserId);
+  if (!group.archivedAt) {
+    throw new ConflictError("Group is not archived.");
+  }
+  return db.group.update({
+    where: { id: group.id },
+    data: { archivedAt: null },
+  });
 }

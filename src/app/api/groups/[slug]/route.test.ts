@@ -36,7 +36,7 @@ vi.mock("next/navigation", () => ({
 const auth = await import("@/lib/auth");
 const { db } = await import("@/lib/db");
 const { createGroup } = await import("@/lib/groups");
-const { GET, PATCH } = await import("./route");
+const { DELETE, GET, PATCH } = await import("./route");
 
 beforeAll(async () => {
   const root = path.resolve(import.meta.dirname, "../../../../..");
@@ -172,5 +172,77 @@ describe("PATCH /api/groups/[slug]", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.group.description).toBeNull();
+  });
+});
+
+describe("DELETE /api/groups/[slug]", () => {
+  it("returns 401 when unauthenticated", async () => {
+    const res = await DELETE(jsonReq("http://x/api/groups/anything", "DELETE"), ctx("anything"));
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 404 when slug doesn't exist", async () => {
+    await auth.signIn(`del-nf-${Date.now()}@example.com`);
+    const res = await DELETE(
+      jsonReq("http://x/api/groups/missing-del", "DELETE"),
+      ctx("missing-del"),
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 403 when actor is not the owner", async () => {
+    const ownerEmail = `del-owner-${Date.now()}@example.com`;
+    await auth.signIn(ownerEmail);
+    const ownerSess = (await auth.getSession())!;
+    const slug = `del-forbid-${Date.now()}`;
+    await createGroup({ name: "F", slug }, ownerSess.user.id);
+    cookieStore.clear();
+    await auth.signIn(`del-stranger-${Date.now()}@example.com`);
+    const res = await DELETE(jsonReq(`http://x/api/groups/${slug}`, "DELETE"), ctx(slug));
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 200 and sets archivedAt when actor is owner", async () => {
+    const ownerEmail = `del-ok-${Date.now()}@example.com`;
+    await auth.signIn(ownerEmail);
+    const ownerSess = (await auth.getSession())!;
+    const slug = `del-ok-${Date.now()}`;
+    await createGroup({ name: "Ok", slug }, ownerSess.user.id);
+    const res = await DELETE(jsonReq(`http://x/api/groups/${slug}`, "DELETE"), ctx(slug));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.group.archivedAt).not.toBeNull();
+    const fresh = await db.group.findUnique({ where: { slug } });
+    expect(fresh?.archivedAt).not.toBeNull();
+  });
+
+  it("returns 409 when the group is already archived", async () => {
+    const ownerEmail = `del-twice-${Date.now()}@example.com`;
+    await auth.signIn(ownerEmail);
+    const ownerSess = (await auth.getSession())!;
+    const slug = `del-twice-${Date.now()}`;
+    await createGroup({ name: "Twice", slug }, ownerSess.user.id);
+    const first = await DELETE(jsonReq(`http://x/api/groups/${slug}`, "DELETE"), ctx(slug));
+    expect(first.status).toBe(200);
+    const second = await DELETE(jsonReq(`http://x/api/groups/${slug}`, "DELETE"), ctx(slug));
+    expect(second.status).toBe(409);
+  });
+
+  it("blocks PATCH after archive (409)", async () => {
+    const ownerEmail = `del-then-patch-${Date.now()}@example.com`;
+    await auth.signIn(ownerEmail);
+    const ownerSess = (await auth.getSession())!;
+    const slug = `del-then-patch-${Date.now()}`;
+    await createGroup({ name: "P", slug }, ownerSess.user.id);
+    const archiveRes = await DELETE(
+      jsonReq(`http://x/api/groups/${slug}`, "DELETE"),
+      ctx(slug),
+    );
+    expect(archiveRes.status).toBe(200);
+    const patchRes = await PATCH(
+      jsonReq(`http://x/api/groups/${slug}`, "PATCH", { name: "Whoops" }),
+      ctx(slug),
+    );
+    expect(patchRes.status).toBe(409);
   });
 });
