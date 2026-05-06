@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { assertGroupNotArchived } from "@/lib/groups";
 import { NotFoundError, assertApprovedMember } from "@/lib/memberships";
 import { createAnswer } from "@/lib/answers";
+import { notifyAnswerPosted } from "@/lib/notifications";
 import { createAnswerSchema } from "@/lib/validation/answers";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -29,7 +30,14 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
   try {
     const question = await db.question.findUnique({
       where: { id },
-      select: { id: true, groupId: true, deletedAt: true },
+      select: {
+        id: true,
+        title: true,
+        authorId: true,
+        groupId: true,
+        deletedAt: true,
+        group: { select: { slug: true, name: true } },
+      },
     });
     if (!question || question.deletedAt) {
       throw new NotFoundError("Question not found.");
@@ -37,6 +45,16 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
     await assertApprovedMember(question.groupId, session.user.id);
     await assertGroupNotArchived(question.groupId);
     const answer = await createAnswer(parsed.data, question.id, session.user.id);
+    try {
+      await notifyAnswerPosted(
+        { id: answer.id, authorId: answer.authorId },
+        { id: question.id, title: question.title, authorId: question.authorId },
+        question.group,
+        session.user.name,
+      );
+    } catch (notifyErr) {
+      console.error("notifyAnswerPosted failed:", notifyErr);
+    }
     return Response.json({ answer }, { status: 201 });
   } catch (err) {
     return errorToResponse(err);

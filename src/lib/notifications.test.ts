@@ -17,12 +17,20 @@ const { db } = await import("./db");
 const { createGroup } = await import("./groups");
 const { applyToGroup, NotFoundError } = await import("./memberships");
 const { createQuestion } = await import("./questions");
+const { createAnswer } = await import("./answers");
 const {
   notifyQuestionCreated,
+  notifyAnswerPosted,
+  notifyAnswerAccepted,
+  notifyMembershipDecision,
   listForUser,
   markRead,
   markAllRead,
   QUESTION_CREATED,
+  ANSWER_POSTED,
+  ANSWER_ACCEPTED,
+  MEMBERSHIP_APPROVED,
+  MEMBERSHIP_REJECTED,
 } = await import("./notifications");
 
 beforeAll(async () => {
@@ -156,8 +164,10 @@ describe("listForUser", () => {
 
     const result = await listForUser(u.id);
     expect(result.items).toHaveLength(2);
-    expect(result.items[0]!.payload.questionTitle).toBe("New");
-    expect(result.items[1]!.payload.questionTitle).toBe("Old");
+    const titles = result.items.map((i) =>
+      i.type === QUESTION_CREATED ? i.payload.questionTitle : null,
+    );
+    expect(titles).toEqual(["New", "Old"]);
     expect(result.unreadCount).toBe(1);
   });
 
@@ -210,7 +220,9 @@ describe("listForUser", () => {
     });
 
     const result = await listForUser(u.id);
-    const ids = result.items.map((i) => i.payload.questionId);
+    const ids = result.items.map((i) =>
+      i.type === QUESTION_CREATED ? i.payload.questionId : null,
+    );
     expect(ids).toContain(visible.id);
     expect(ids).not.toContain(hidden.id);
   });
@@ -356,5 +368,239 @@ describe("markAllRead", () => {
     expect(await db.notification.count({ where: { userId: u.id, readAt: null } })).toBe(0);
     const otherStill = await db.notification.findUnique({ where: { id: otherUnread.id } });
     expect(otherStill?.readAt).toBeNull();
+  });
+});
+
+describe("notifyAnswerPosted", () => {
+  it("notifies the question author with deep-link payload", async () => {
+    const author = await makeUser("qAuthor");
+    const answerer = await makeUser("answerer");
+    const group = await createGroup(
+      { name: "AP", slug: uniq("ap"), autoApprove: true },
+      author.id,
+    );
+    await applyToGroup(group.id, answerer.id);
+    const question = await createQuestion(
+      { title: "Help?", body: "body" },
+      group.id,
+      author.id,
+    );
+    const answer = await createAnswer(
+      { body: "answer body" },
+      question.id,
+      answerer.id,
+    );
+
+    const count = await notifyAnswerPosted(
+      { id: answer.id, authorId: answer.authorId },
+      { id: question.id, title: question.title, authorId: question.authorId },
+      { slug: group.slug, name: group.name },
+      "Answerer Name",
+    );
+    expect(count).toBe(1);
+
+    const rows = await db.notification.findMany({ where: { userId: author.id } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.type).toBe(ANSWER_POSTED);
+    const payload = JSON.parse(rows[0]!.payload);
+    expect(payload.questionId).toBe(question.id);
+    expect(payload.questionTitle).toBe("Help?");
+    expect(payload.groupSlug).toBe(group.slug);
+    expect(payload.groupName).toBe(group.name);
+    expect(payload.answerId).toBe(answer.id);
+    expect(payload.answererName).toBe("Answerer Name");
+  });
+
+  it("returns 0 when the answerer is the question author", async () => {
+    const author = await makeUser("selfAns");
+    const group = await createGroup(
+      { name: "SA", slug: uniq("sa"), autoApprove: true },
+      author.id,
+    );
+    const question = await createQuestion(
+      { title: "Self", body: "body" },
+      group.id,
+      author.id,
+    );
+    const answer = await createAnswer(
+      { body: "self answer" },
+      question.id,
+      author.id,
+    );
+
+    const count = await notifyAnswerPosted(
+      { id: answer.id, authorId: answer.authorId },
+      { id: question.id, title: question.title, authorId: question.authorId },
+      { slug: group.slug, name: group.name },
+      "Author",
+    );
+    expect(count).toBe(0);
+    const rows = await db.notification.findMany({ where: { userId: author.id } });
+    expect(rows).toHaveLength(0);
+  });
+});
+
+describe("notifyAnswerAccepted", () => {
+  it("notifies the answer author with deep-link payload", async () => {
+    const author = await makeUser("aaAuthor");
+    const answerer = await makeUser("aaAnswerer");
+    const group = await createGroup(
+      { name: "AA", slug: uniq("aa"), autoApprove: true },
+      author.id,
+    );
+    await applyToGroup(group.id, answerer.id);
+    const question = await createQuestion(
+      { title: "Q", body: "body" },
+      group.id,
+      author.id,
+    );
+    const answer = await createAnswer(
+      { body: "ans" },
+      question.id,
+      answerer.id,
+    );
+
+    const count = await notifyAnswerAccepted(
+      { id: answer.id, authorId: answer.authorId },
+      { id: question.id, title: question.title },
+      { slug: group.slug, name: group.name },
+      { id: author.id, name: "Question Author" },
+    );
+    expect(count).toBe(1);
+
+    const rows = await db.notification.findMany({ where: { userId: answerer.id } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.type).toBe(ANSWER_ACCEPTED);
+    const payload = JSON.parse(rows[0]!.payload);
+    expect(payload.questionId).toBe(question.id);
+    expect(payload.questionTitle).toBe("Q");
+    expect(payload.groupSlug).toBe(group.slug);
+    expect(payload.groupName).toBe(group.name);
+    expect(payload.answerId).toBe(answer.id);
+    expect(payload.actorName).toBe("Question Author");
+  });
+
+  it("returns 0 when the actor is the answer author (accepting own answer)", async () => {
+    const author = await makeUser("selfAccept");
+    const group = await createGroup(
+      { name: "SC", slug: uniq("sc"), autoApprove: true },
+      author.id,
+    );
+    const question = await createQuestion(
+      { title: "Q", body: "body" },
+      group.id,
+      author.id,
+    );
+    const answer = await createAnswer(
+      { body: "ans" },
+      question.id,
+      author.id,
+    );
+
+    const count = await notifyAnswerAccepted(
+      { id: answer.id, authorId: answer.authorId },
+      { id: question.id, title: question.title },
+      { slug: group.slug, name: group.name },
+      { id: author.id, name: "Author" },
+    );
+    expect(count).toBe(0);
+    const rows = await db.notification.findMany({ where: { userId: author.id } });
+    expect(rows).toHaveLength(0);
+  });
+});
+
+describe("notifyMembershipDecision", () => {
+  it("notifies the target user on approval", async () => {
+    const owner = await makeUser("mdOwner");
+    const applicant = await makeUser("mdApplicant");
+    const group = await createGroup(
+      { name: "MD", slug: uniq("md"), autoApprove: false },
+      owner.id,
+    );
+
+    const count = await notifyMembershipDecision(
+      "approved",
+      applicant.id,
+      { slug: group.slug, name: group.name },
+      { id: owner.id, name: "Owner Name" },
+    );
+    expect(count).toBe(1);
+
+    const rows = await db.notification.findMany({ where: { userId: applicant.id } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.type).toBe(MEMBERSHIP_APPROVED);
+    const payload = JSON.parse(rows[0]!.payload);
+    expect(payload.groupSlug).toBe(group.slug);
+    expect(payload.groupName).toBe(group.name);
+    expect(payload.actorName).toBe("Owner Name");
+  });
+
+  it("notifies the target user on rejection", async () => {
+    const owner = await makeUser("mdrOwner");
+    const applicant = await makeUser("mdrApplicant");
+    const group = await createGroup(
+      { name: "MDR", slug: uniq("mdr"), autoApprove: false },
+      owner.id,
+    );
+
+    const count = await notifyMembershipDecision(
+      "rejected",
+      applicant.id,
+      { slug: group.slug, name: group.name },
+      { id: owner.id, name: null },
+    );
+    expect(count).toBe(1);
+
+    const rows = await db.notification.findMany({ where: { userId: applicant.id } });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.type).toBe(MEMBERSHIP_REJECTED);
+    const payload = JSON.parse(rows[0]!.payload);
+    expect(payload.actorName).toBeNull();
+  });
+
+  it("returns 0 when the actor is the target", async () => {
+    const u = await makeUser("mdSelf");
+    const count = await notifyMembershipDecision(
+      "approved",
+      u.id,
+      { slug: "g", name: "G" },
+      { id: u.id, name: "Self" },
+    );
+    expect(count).toBe(0);
+    const rows = await db.notification.findMany({ where: { userId: u.id } });
+    expect(rows).toHaveLength(0);
+  });
+});
+
+describe("listForUser membership pass-through", () => {
+  it("returns membership notifications even though their payload has no questionId", async () => {
+    const u = await makeUser("memPass");
+    await db.notification.create({
+      data: {
+        userId: u.id,
+        type: MEMBERSHIP_APPROVED,
+        payload: JSON.stringify({
+          groupSlug: "g",
+          groupName: "G",
+          actorName: "Mod",
+        }),
+      },
+    });
+    await db.notification.create({
+      data: {
+        userId: u.id,
+        type: MEMBERSHIP_REJECTED,
+        payload: JSON.stringify({
+          groupSlug: "g2",
+          groupName: "G2",
+          actorName: null,
+        }),
+      },
+    });
+
+    const result = await listForUser(u.id);
+    expect(result.items).toHaveLength(2);
+    const types = result.items.map((i) => i.type).sort();
+    expect(types).toEqual([MEMBERSHIP_APPROVED, MEMBERSHIP_REJECTED].sort());
   });
 });
