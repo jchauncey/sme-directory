@@ -206,6 +206,7 @@ export type ApprovedMember = {
   userId: string;
   name: string | null;
   email: string | null;
+  image: string | null;
   role: Membership["role"];
 };
 
@@ -217,12 +218,13 @@ export async function listApprovedMembers(
     where: { groupId, status: "approved" },
     orderBy: { createdAt: "asc" },
     take: limit,
-    include: { user: { select: { id: true, name: true, email: true } } },
+    include: { user: { select: { id: true, name: true, email: true, image: true } } },
   });
   return rows.map((m) => ({
     userId: m.user.id,
     name: m.user.name,
     email: m.user.email,
+    image: m.user.image,
     role: m.role,
   }));
 }
@@ -246,12 +248,13 @@ export async function listSuccessorCandidates(
       userId: { not: excludingUserId },
     },
     orderBy: [{ createdAt: "asc" }],
-    include: { user: { select: { id: true, name: true, email: true } } },
+    include: { user: { select: { id: true, name: true, email: true, image: true } } },
   });
   return rows.map((m) => ({
     userId: m.user.id,
     name: m.user.name,
     email: m.user.email,
+    image: m.user.image,
     role: m.role,
   }));
 }

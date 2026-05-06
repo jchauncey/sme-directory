@@ -14,7 +14,7 @@ import type {
   UpdateQuestionInput,
 } from "@/lib/validation/questions";
 
-export type QuestionAuthor = Pick<User, "id" | "email" | "name">;
+export type QuestionAuthor = Pick<User, "id" | "email" | "name" | "image">;
 
 export type QuestionListItem = Pick<
   Question,
@@ -102,7 +102,7 @@ export async function listQuestionsForGroup(
       skip,
       take: opts.per,
       include: {
-        author: { select: { id: true, email: true, name: true } },
+        author: { select: { id: true, email: true, name: true, image: true } },
         _count: { select: { answers: true } },
       },
     }),
@@ -135,12 +135,12 @@ export async function getQuestionById(
   const q = await db.question.findUnique({
     where: { id },
     include: {
-      author: { select: { id: true, email: true, name: true } },
+      author: { select: { id: true, email: true, name: true, image: true } },
       group: { select: { id: true, slug: true, name: true } },
       answers: {
         orderBy: { createdAt: "asc" },
         include: {
-          author: { select: { id: true, email: true, name: true } },
+          author: { select: { id: true, email: true, name: true, image: true } },
         },
       },
     },

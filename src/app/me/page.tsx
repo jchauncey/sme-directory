@@ -6,6 +6,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { AvatarUploadForm } from "@/components/avatar/avatar-upload-form";
 import { ProfileAnswerList } from "@/components/profile/profile-answer-list";
 import { ProfileFavoriteList } from "@/components/profile/profile-favorite-list";
 import { ProfileGroupList } from "@/components/profile/profile-group-list";
@@ -42,14 +44,24 @@ export default async function MePage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <Card>
         <CardHeader className="border-b">
-          <CardTitle className="text-xl">{display}</CardTitle>
-          <CardDescription>
-            <span>{session.user.email}</span>
-            {" · "}
-            <span className="font-mono text-xs">{session.user.id}</span>
-          </CardDescription>
+          <div className="flex items-start gap-4">
+            <UserAvatar user={session.user} size="lg" />
+            <div className="flex-1 space-y-1">
+              <CardTitle className="text-xl">{display}</CardTitle>
+              <CardDescription>
+                <span>{session.user.email}</span>
+                {" · "}
+                <span className="font-mono text-xs">{session.user.id}</span>
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="space-y-4 pt-4">
+          <AvatarUploadForm
+            endpoint="/api/users/me/avatar"
+            hasImage={Boolean(session.user.image)}
+            label="Profile avatar"
+          />
           <EditProfileForm name={name} bio={bio} />
         </CardContent>
       </Card>

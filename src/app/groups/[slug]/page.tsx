@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,6 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { GroupAvatar } from "@/components/ui/group-avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { getSession } from "@/lib/auth";
 import { getGroupBySlug } from "@/lib/groups";
 import {
@@ -22,14 +23,6 @@ import { MembershipActions } from "./membership-actions";
 type Props = { params: Promise<{ slug: string }> };
 
 const MEMBER_PREVIEW_LIMIT = 12;
-
-function initials(name: string | null, email: string | null): string {
-  const source = (name ?? email ?? "").trim();
-  if (!source) return "?";
-  const parts = source.split(/\s+/).filter(Boolean);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
 
 function authorLabel(a: { name: string | null; email: string | null }): string {
   return a.name ?? a.email ?? "unknown";
@@ -67,26 +60,29 @@ export default async function GroupDetailPage({ params }: Props) {
       <Card>
         <CardHeader className="border-b">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-1">
-              <CardTitle className="text-xl">
-                {group.name}
-                {isArchived ? (
-                  <span className="ml-2 rounded-md border border-border px-1.5 py-0.5 align-middle text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Archived
+            <div className="flex items-start gap-3">
+              <GroupAvatar group={group} size="lg" />
+              <div className="space-y-1">
+                <CardTitle className="text-xl">
+                  {group.name}
+                  {isArchived ? (
+                    <span className="ml-2 rounded-md border border-border px-1.5 py-0.5 align-middle text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Archived
+                    </span>
+                  ) : null}
+                </CardTitle>
+                <CardDescription>
+                  <span className="font-mono text-xs">{group.slug}</span>
+                  {" · "}
+                  <span>{memberLabel}</span>
+                  {" · "}
+                  <span>
+                    {group.autoApprove
+                      ? "auto-approves new members"
+                      : "requires owner approval"}
                   </span>
-                ) : null}
-              </CardTitle>
-              <CardDescription>
-                <span className="font-mono text-xs">{group.slug}</span>
-                {" · "}
-                <span>{memberLabel}</span>
-                {" · "}
-                <span>
-                  {group.autoApprove
-                    ? "auto-approves new members"
-                    : "requires owner approval"}
-                </span>
-              </CardDescription>
+                </CardDescription>
+              </div>
             </div>
             {isOwner ? (
               <Button
@@ -148,9 +144,7 @@ export default async function GroupDetailPage({ params }: Props) {
             <ul className="space-y-2">
               {members.map((m) => (
                 <li key={m.userId} className="flex items-center gap-3 text-sm">
-                  <Avatar size="sm">
-                    <AvatarFallback>{initials(m.name, m.email)}</AvatarFallback>
-                  </Avatar>
+                  <UserAvatar user={m} size="sm" />
                   <span>{m.name ?? m.email ?? "Anonymous"}</span>
                   {m.role !== "member" ? (
                     <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">

@@ -9,6 +9,7 @@ export type Session = {
     id: string;
     email: string;
     name: string | null;
+    image: string | null;
   };
 };
 
@@ -31,7 +32,11 @@ function getSecret(): Uint8Array {
 }
 
 async function mintToken(session: Session): Promise<string> {
-  return new SignJWT({ email: session.user.email, name: session.user.name })
+  return new SignJWT({
+    email: session.user.email,
+    name: session.user.name,
+    image: session.user.image,
+  })
     .setProtectedHeader({ alg: ALG })
     .setSubject(session.user.id)
     .setIssuedAt()
@@ -50,11 +55,24 @@ async function readToken(token: string): Promise<Session | null> {
         id: payload.sub,
         email: payload.email,
         name: typeof payload.name === "string" ? payload.name : null,
+        image: typeof payload.image === "string" ? payload.image : null,
       },
     };
   } catch {
     return null;
   }
+}
+
+async function writeSessionCookie(session: Session): Promise<void> {
+  const token = await mintToken(session);
+  const store = await cookies();
+  store.set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isProduction(),
+    path: "/",
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  });
 }
 
 export async function getSession(): Promise<Session | null> {
@@ -90,18 +108,22 @@ export async function signIn(email: string): Promise<Session> {
     create: { email: normalized },
   });
   const session: Session = {
-    user: { id: user.id, email: normalized, name: user.name },
+    user: { id: user.id, email: normalized, name: user.name, image: user.image },
   };
-  const token = await mintToken(session);
-  const store = await cookies();
-  store.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isProduction(),
-    path: "/",
-    maxAge: SESSION_MAX_AGE_SECONDS,
-  });
+  await writeSessionCookie(session);
   return session;
+}
+
+export async function refreshSession(): Promise<Session | null> {
+  const current = await getSession();
+  if (!current) return null;
+  const user = await db.user.findUnique({ where: { id: current.user.id } });
+  if (!user || !user.email) return current;
+  const next: Session = {
+    user: { id: user.id, email: user.email, name: user.name, image: user.image },
+  };
+  await writeSessionCookie(next);
+  return next;
 }
 
 export async function signOut(): Promise<void> {

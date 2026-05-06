@@ -3,8 +3,8 @@
 import Link from "next/link";
 
 import { signOutAction } from "@/app/login/actions";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,17 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSession } from "@/lib/auth-client";
-
-function initialsFor(value: string | null | undefined): string {
-  if (!value) return "?";
-  const trimmed = value.trim();
-  if (!trimmed) return "?";
-  const parts = trimmed.split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-  return trimmed.slice(0, 2).toUpperCase();
-}
 
 export function UserMenu() {
   const { data: session, status } = useSession();
@@ -39,7 +28,6 @@ export function UserMenu() {
 
   const user = session?.user;
   const display = user?.name?.trim() || user?.email || "Account";
-  const initials = initialsFor(user?.name || user?.email);
 
   return (
     <DropdownMenu>
@@ -53,9 +41,14 @@ export function UserMenu() {
           />
         }
       >
-        <Avatar size="sm">
-          <AvatarFallback>{initials}</AvatarFallback>
-        </Avatar>
+        <UserAvatar
+          user={{
+            name: user?.name ?? null,
+            email: user?.email ?? null,
+            image: user?.image ?? null,
+          }}
+          size="sm"
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-48">
         <DropdownMenuLabel className="font-normal">

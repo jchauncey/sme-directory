@@ -8,6 +8,7 @@ import {
   SoleOwnerCannotLeaveError,
 } from "@/lib/memberships";
 import { SlugConflictError } from "@/lib/groups";
+import { ImageTooLargeError, InvalidImageError } from "@/lib/avatars";
 
 export function unauthorized(): Response {
   return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -47,6 +48,12 @@ export function errorToResponse(err: unknown): Response {
   }
   if (err instanceof InvalidSuccessorError) {
     return Response.json({ error: "InvalidSuccessor", message: err.message }, { status: 422 });
+  }
+  if (err instanceof InvalidImageError) {
+    return Response.json({ error: "InvalidImage", message: err.message }, { status: 400 });
+  }
+  if (err instanceof ImageTooLargeError) {
+    return Response.json({ error: "ImageTooLarge", message: err.message }, { status: 413 });
   }
   if (err instanceof z.ZodError) {
     return validationFailed(err);

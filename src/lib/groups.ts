@@ -58,6 +58,7 @@ export type GroupListItem = {
   slug: string;
   name: string;
   description: string | null;
+  image: string | null;
   memberCount: number;
   createdAt: Date;
   archivedAt: Date | null;
@@ -78,6 +79,7 @@ export async function listGroups(opts: {
         slug: true,
         name: true,
         description: true,
+        image: true,
         createdAt: true,
         archivedAt: true,
       },
@@ -96,6 +98,7 @@ export async function listGroups(opts: {
     slug: g.slug,
     name: g.name,
     description: g.description,
+    image: g.image,
     createdAt: g.createdAt,
     archivedAt: g.archivedAt,
     memberCount: countByGroupId.get(g.id) ?? 0,
