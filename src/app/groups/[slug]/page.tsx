@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { GroupAvatar } from "@/components/ui/group-avatar";
+import { NotificationPreferencesControl } from "@/components/notification-preferences-control";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { getSession } from "@/lib/auth";
 import { getGroupBySlug } from "@/lib/groups";
@@ -17,6 +18,7 @@ import {
   getMembership,
   listApprovedMembers,
 } from "@/lib/memberships";
+import { getPreferenceForGroup } from "@/lib/notification-preferences";
 import { listQuestionsForGroup } from "@/lib/questions";
 import { MembershipActions } from "./membership-actions";
 
@@ -43,6 +45,8 @@ export default async function GroupDetailPage({ params }: Props) {
 
   const isOwner = membership?.role === "owner" && membership.status === "approved";
   const isApproved = membership?.status === "approved";
+  const mutedTypes =
+    isApproved && session ? await getPreferenceForGroup(session.user.id, group.id) : [];
   const isArchived = group.archivedAt != null;
   const memberLabel = memberCount === 1 ? "1 member" : `${memberCount} members`;
 
@@ -157,6 +161,24 @@ export default async function GroupDetailPage({ params }: Props) {
           )}
         </CardContent>
       </Card>
+
+      {isApproved ? (
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle className="text-base">Notification settings</CardTitle>
+            <CardDescription>
+              Control which {group.name} activity sends you notifications.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <NotificationPreferencesControl
+              groupId={group.id}
+              groupName={group.name}
+              initialMutedTypes={mutedTypes}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader className="border-b">

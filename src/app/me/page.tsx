@@ -13,6 +13,7 @@ import { ProfileFavoriteList } from "@/components/profile/profile-favorite-list"
 import { ProfileGroupList } from "@/components/profile/profile-group-list";
 import { ProfileQuestionList } from "@/components/profile/profile-question-list";
 import { requireAuth } from "@/lib/auth";
+import { listPreferencesForUser } from "@/lib/notification-preferences";
 import {
   getOwnProfile,
   listAnswersByAuthor,
@@ -28,13 +29,18 @@ export default async function MePage() {
   const session = await requireAuth();
   const userId = session.user.id;
 
-  const [profile, questions, answers, groups, favorites] = await Promise.all([
+  const [profile, questions, answers, groups, favorites, preferences] = await Promise.all([
     getOwnProfile(userId),
     listQuestionsByAuthor(userId, { page: 1, per: PAGE_SIZE }),
     listAnswersByAuthor(userId, { page: 1, per: PAGE_SIZE }),
     listGroupsForUser(userId, { includePending: true }),
     listFavoritesByUser(userId),
+    listPreferencesForUser(userId),
   ]);
+
+  const mutedTypesByGroupId = Object.fromEntries(
+    preferences.map((p) => [p.groupId, p.mutedTypes]),
+  );
 
   const name = profile?.name ?? session.user.name;
   const bio = profile?.bio ?? null;
@@ -126,6 +132,7 @@ export default async function MePage() {
           <ProfileGroupList
             items={groups}
             viewer="self"
+            mutedTypesByGroupId={mutedTypesByGroupId}
             emptyState={
               <>
                 You&rsquo;re not in any groups yet.{" "}

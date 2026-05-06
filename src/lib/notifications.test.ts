@@ -18,6 +18,7 @@ const { createGroup } = await import("./groups");
 const { applyToGroup, NotFoundError } = await import("./memberships");
 const { createQuestion } = await import("./questions");
 const { createAnswer } = await import("./answers");
+const { setPreferenceForGroup } = await import("./notification-preferences");
 const {
   notifyQuestionCreated,
   notifyAnswerPosted,
@@ -112,6 +113,75 @@ describe("notifyQuestionCreated", () => {
 
     const pendingRows = await db.notification.findMany({ where: { userId: pending.id } });
     expect(pendingRows).toHaveLength(0);
+  });
+
+  it("skips users who muted the question category for this group", async () => {
+    const owner = await makeUser("muteOwner");
+    const group = await createGroup(
+      { name: "M", slug: uniq("mute"), autoApprove: true },
+      owner.id,
+    );
+    const muted = await makeUser("muted");
+    const noisy = await makeUser("noisy");
+    const otherMute = await makeUser("otherMute");
+    await applyToGroup(group.id, muted.id);
+    await applyToGroup(group.id, noisy.id);
+    await applyToGroup(group.id, otherMute.id);
+    await db.membership.update({
+      where: { userId_groupId: { userId: muted.id, groupId: group.id } },
+      data: { status: "approved" },
+    });
+    await db.membership.update({
+      where: { userId_groupId: { userId: noisy.id, groupId: group.id } },
+      data: { status: "approved" },
+    });
+    await db.membership.update({
+      where: { userId_groupId: { userId: otherMute.id, groupId: group.id } },
+      data: { status: "approved" },
+    });
+
+    await setPreferenceForGroup(muted.id, group.id, ["question"]);
+    await setPreferenceForGroup(otherMute.id, group.id, ["answer"]); // muted other category
+
+    const question = await createQuestion(
+      { title: "Hi", body: "body" },
+      group.id,
+      owner.id,
+    );
+    const count = await notifyQuestionCreated(question, group, "Owner");
+
+    // Recipients are: noisy + otherMute (muted excluded; owner is the author).
+    expect(count).toBe(2);
+    expect(await db.notification.count({ where: { userId: muted.id } })).toBe(0);
+    expect(await db.notification.count({ where: { userId: noisy.id } })).toBe(1);
+    expect(await db.notification.count({ where: { userId: otherMute.id } })).toBe(1);
+  });
+
+  it("ignores mutes scoped to a different group", async () => {
+    const owner = await makeUser("crossOwner");
+    const g1 = await createGroup(
+      { name: "X1", slug: uniq("cx1"), autoApprove: true },
+      owner.id,
+    );
+    const g2 = await createGroup(
+      { name: "X2", slug: uniq("cx2"), autoApprove: true },
+      owner.id,
+    );
+    const member = await makeUser("crossMember");
+    await applyToGroup(g1.id, member.id);
+    await applyToGroup(g2.id, member.id);
+
+    // Muted in g2 only — should still receive g1 notifications.
+    await setPreferenceForGroup(member.id, g2.id, ["question"]);
+
+    const question = await createQuestion(
+      { title: "X", body: "body" },
+      g1.id,
+      owner.id,
+    );
+    const count = await notifyQuestionCreated(question, g1, "Owner");
+    expect(count).toBe(1);
+    expect(await db.notification.count({ where: { userId: member.id } })).toBe(1);
   });
 
   it("returns 0 when there are no other approved members", async () => {
@@ -225,6 +295,118 @@ describe("listForUser", () => {
     );
     expect(ids).toContain(visible.id);
     expect(ids).not.toContain(hidden.id);
+  });
+
+  it("paginates with page/per and reports total", async () => {
+    const u = await makeUser("pagU");
+    for (let i = 0; i < 5; i += 1) {
+      await db.notification.create({
+        data: {
+          userId: u.id,
+          type: QUESTION_CREATED,
+          payload: JSON.stringify({
+            questionId: `q${i}`,
+            questionTitle: `T${i}`,
+            groupSlug: "g",
+            groupName: "G",
+            authorName: null,
+          }),
+        },
+      });
+      await new Promise((r) => setTimeout(r, 1));
+    }
+    const p1 = await listForUser(u.id, { page: 1, per: 2 });
+    expect(p1.items).toHaveLength(2);
+    expect(p1.total).toBe(5);
+    expect(p1.page).toBe(1);
+    expect(p1.per).toBe(2);
+    const p3 = await listForUser(u.id, { page: 3, per: 2 });
+    expect(p3.items).toHaveLength(1);
+    expect(p3.total).toBe(5);
+  });
+
+  it("filters by type prefix", async () => {
+    const u = await makeUser("typU");
+    await db.notification.create({
+      data: {
+        userId: u.id,
+        type: "question.created",
+        payload: JSON.stringify({
+          questionId: "qa",
+          questionTitle: "A",
+          groupSlug: "g",
+          groupName: "G",
+          authorName: null,
+        }),
+      },
+    });
+    await db.notification.create({
+      data: {
+        userId: u.id,
+        type: "answer.posted",
+        payload: JSON.stringify({
+          questionId: "qb",
+          questionTitle: "B",
+          groupSlug: "g",
+          groupName: "G",
+          authorName: null,
+        }),
+      },
+    });
+
+    const onlyQuestions = await listForUser(u.id, { types: ["question"] });
+    expect(onlyQuestions.items).toHaveLength(1);
+    expect(onlyQuestions.items[0]!.type).toBe("question.created");
+
+    const onlyAnswers = await listForUser(u.id, { types: ["answer"] });
+    expect(onlyAnswers.items).toHaveLength(1);
+    expect(onlyAnswers.items[0]!.type).toBe("answer.posted");
+
+    const both = await listForUser(u.id, { types: ["question", "answer"] });
+    expect(both.items).toHaveLength(2);
+
+    const none = await listForUser(u.id, { types: [] });
+    expect(none.items).toHaveLength(2); // empty types means no filter
+  });
+
+  it("filters to unread when unreadOnly is set", async () => {
+    const u = await makeUser("unrU");
+    await db.notification.create({
+      data: {
+        userId: u.id,
+        type: QUESTION_CREATED,
+        payload: JSON.stringify({
+          questionId: "qx",
+          questionTitle: "X",
+          groupSlug: "g",
+          groupName: "G",
+          authorName: null,
+        }),
+        readAt: new Date(),
+      },
+    });
+    await db.notification.create({
+      data: {
+        userId: u.id,
+        type: QUESTION_CREATED,
+        payload: JSON.stringify({
+          questionId: "qy",
+          questionTitle: "Y",
+          groupSlug: "g",
+          groupName: "G",
+          authorName: null,
+        }),
+      },
+    });
+    const all = await listForUser(u.id);
+    expect(all.items).toHaveLength(2);
+    const unread = await listForUser(u.id, { unreadOnly: true });
+    expect(unread.items).toHaveLength(1);
+    const unreadItem = unread.items[0]!;
+    if (unreadItem.type !== QUESTION_CREATED) throw new Error("expected question.created");
+    expect(unreadItem.payload.questionId).toBe("qy");
+    expect(unread.total).toBe(1);
+    expect(unread.unreadCount).toBe(1);
   });
 
   it("respects the limit option", async () => {

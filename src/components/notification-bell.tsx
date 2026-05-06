@@ -244,6 +244,14 @@ export function NotificationBell() {
             })
           )}
         </div>
+        <div className="border-t border-border px-3 py-2 text-center">
+          <Link
+            href="/notifications"
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            View all notifications
+          </Link>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

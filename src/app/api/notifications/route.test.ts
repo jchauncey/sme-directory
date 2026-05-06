@@ -65,7 +65,7 @@ beforeEach(() => {
 
 describe("GET /api/notifications", () => {
   it("returns 401 when unauthenticated", async () => {
-    const res = await GET();
+    const res = await GET(new Request("http://localhost/api/notifications"));
     expect(res.status).toBe(401);
   });
 
@@ -87,11 +87,57 @@ describe("GET /api/notifications", () => {
       },
     });
 
-    const res = await GET();
+    const res = await GET(new Request("http://localhost/api/notifications"));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.items).toHaveLength(1);
     expect(json.items[0].payload.questionTitle).toBe("Hello");
     expect(json.unreadCount).toBe(1);
+  });
+
+  it("paginates and filters when query params are passed", async () => {
+    const email = `nq-${Date.now()}-${Math.random()}@example.com`;
+    await auth.signIn(email);
+    const sess = (await auth.getSession())!;
+    for (let i = 0; i < 4; i += 1) {
+      await db.notification.create({
+        data: {
+          userId: sess.user.id,
+          type: QUESTION_CREATED,
+          payload: JSON.stringify({
+            questionId: `qq${i}`,
+            questionTitle: `Q${i}`,
+            groupSlug: "g",
+            groupName: "G",
+            authorName: null,
+          }),
+        },
+      });
+      await new Promise((r) => setTimeout(r, 1));
+    }
+    // Add a noise notification of a different type that the filter should exclude.
+    await db.notification.create({
+      data: {
+        userId: sess.user.id,
+        type: "answer.posted",
+        payload: JSON.stringify({
+          questionId: "qx",
+          questionTitle: "X",
+          groupSlug: "g",
+          groupName: "G",
+          authorName: null,
+        }),
+      },
+    });
+
+    const res = await GET(
+      new Request("http://localhost/api/notifications?page=1&per=2&types=question"),
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.items).toHaveLength(2);
+    expect(json.total).toBe(4);
+    expect(json.page).toBe(1);
+    expect(json.per).toBe(2);
   });
 });
