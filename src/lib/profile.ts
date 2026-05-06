@@ -287,10 +287,34 @@ export async function listFavoritesByUser(
 
 export async function getPublicUserProfile(
   userId: string,
-): Promise<{ id: string; name: string | null } | null> {
+): Promise<{ id: string; name: string | null; bio: string | null } | null> {
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true },
+    select: { id: true, name: true, bio: true },
   });
   return user;
+}
+
+export type UserProfile = {
+  id: string;
+  name: string | null;
+  bio: string | null;
+};
+
+export async function getOwnProfile(userId: string): Promise<UserProfile | null> {
+  return db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, bio: true },
+  });
+}
+
+export async function updateUserProfile(
+  userId: string,
+  input: { name: string; bio?: string },
+): Promise<UserProfile> {
+  return db.user.update({
+    where: { id: userId },
+    data: { name: input.name, bio: input.bio ?? null },
+    select: { id: true, name: true, bio: true },
+  });
 }
