@@ -15,6 +15,10 @@ export const searchQuerySchema = z
       .pipe(z.array(z.string().min(1)).max(50, "At most 50 groupIds.")),
     page: z.coerce.number().int().min(1).default(1),
     per: z.coerce.number().int().min(1).max(50).default(20),
+    status: z.enum(["all", "answered", "unanswered"]).default("all"),
+    range: z.enum(["all", "week", "month", "year"]).default("all"),
+    authorId: z.string().min(1).max(64).optional(),
+    sort: z.enum(["relevance", "newest"]).default("relevance"),
   })
   .superRefine((val, ctx) => {
     if ((val.scope === "current" || val.scope === "selected") && val.groupIds.length === 0) {

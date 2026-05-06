@@ -5,11 +5,18 @@ import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth";
 import { getGroupBySlug } from "@/lib/groups";
 import { listGroupsForUser } from "@/lib/profile";
-import { searchContent, type SearchHit } from "@/lib/search";
+import {
+  searchContent,
+  type SearchHit,
+  type SearchRange,
+  type SearchSort,
+  type SearchStatus,
+} from "@/lib/search";
+import { getUserSummaryById } from "@/lib/users";
 import { searchQuerySchema } from "@/lib/validation/search";
 
 import { applyGroupSlugDefault } from "./normalize";
-import { SearchControls, type MyGroup } from "./search-controls";
+import { SearchControls, type AuthorOption, type MyGroup } from "./search-controls";
 
 type Props = {
   searchParams: Promise<{
@@ -19,6 +26,10 @@ type Props = {
     groupSlug?: string;
     page?: string;
     per?: string;
+    status?: string;
+    range?: string;
+    authorId?: string;
+    sort?: string;
   }>;
 };
 
@@ -55,7 +66,41 @@ function authorLabel(a: { name: string | null; email: string | null }): string {
   return a.name ?? a.email ?? "unknown";
 }
 
-function HitCard({ hit }: { hit: SearchHit }) {
+type CommonUrlState = {
+  q: string;
+  scope: string;
+  groupIds: string | undefined;
+  groupSlug: string | undefined;
+  status: SearchStatus;
+  range: SearchRange;
+  authorId: string | undefined;
+  sort: SearchSort;
+  per: number;
+};
+
+function buildSearchUrl(state: CommonUrlState, overrides: Partial<CommonUrlState & { page: number }>): string {
+  const merged: CommonUrlState & { page?: number } = { ...state, ...overrides };
+  const params = new URLSearchParams();
+  if (merged.q) params.set("q", merged.q);
+  params.set("scope", merged.scope);
+  if (merged.groupIds) params.set("groupIds", merged.groupIds);
+  if (merged.groupSlug) params.set("groupSlug", merged.groupSlug);
+  if (merged.status !== "all") params.set("status", merged.status);
+  if (merged.range !== "all") params.set("range", merged.range);
+  if (merged.sort !== "relevance") params.set("sort", merged.sort);
+  if (merged.authorId) params.set("authorId", merged.authorId);
+  if (merged.page && merged.page > 1) params.set("page", String(merged.page));
+  if (merged.per !== 20) params.set("per", String(merged.per));
+  return `/search?${params.toString()}`;
+}
+
+function HitCard({
+  hit,
+  authorFilterUrl,
+}: {
+  hit: SearchHit;
+  authorFilterUrl: string;
+}) {
   const titleNode = hit.titleSnippet ? renderSnippet(hit.titleSnippet) : hit.title;
   return (
     <li className="rounded-lg border border-border p-4">
@@ -67,7 +112,13 @@ function HitCard({ hit }: { hit: SearchHit }) {
           {hit.group.name}
         </Link>
         <span aria-hidden>·</span>
-        <span>{authorLabel(hit.author)}</span>
+        <Link
+          href={authorFilterUrl}
+          className="hover:underline"
+          title="Filter by this author"
+        >
+          {authorLabel(hit.author)}
+        </Link>
       </div>
       <h2 className="mt-1 text-lg font-semibold leading-snug">
         <Link
@@ -82,39 +133,96 @@ function HitCard({ hit }: { hit: SearchHit }) {
   );
 }
 
-function PageLink({
-  to,
-  q,
-  scope,
-  groupIds,
-  groupSlug,
-  per,
-  children,
-  disabled,
+const STATUS_LABEL: Record<SearchStatus, string> = {
+  all: "All",
+  answered: "Answered",
+  unanswered: "Unanswered",
+};
+
+const RANGE_LABEL: Record<SearchRange, string> = {
+  all: "Any time",
+  week: "Past week",
+  month: "Past month",
+  year: "Past year",
+};
+
+const SORT_LABEL: Record<SearchSort, string> = {
+  relevance: "Relevance",
+  newest: "Newest",
+};
+
+function ActiveFilters({
+  state,
+  authorLabelText,
 }: {
-  to: number;
-  q: string;
-  scope: string;
-  groupIds: string | undefined;
-  groupSlug: string | undefined;
-  per: number;
-  children: ReactNode;
-  disabled?: boolean;
+  state: CommonUrlState;
+  authorLabelText: string | null;
 }) {
-  if (disabled) {
-    return (
-      <Button variant="outline" size="sm" disabled>
-        {children}
-      </Button>
-    );
+  const chips: { key: string; label: string; clearUrl: string }[] = [];
+  if (state.status !== "all") {
+    chips.push({
+      key: "status",
+      label: `Status: ${STATUS_LABEL[state.status]}`,
+      clearUrl: buildSearchUrl(state, { status: "all", page: 1 }),
+    });
   }
-  const params = new URLSearchParams({ q, scope, page: String(to), per: String(per) });
-  if (groupIds) params.set("groupIds", groupIds);
-  if (groupSlug) params.set("groupSlug", groupSlug);
+  if (state.range !== "all") {
+    chips.push({
+      key: "range",
+      label: `Date: ${RANGE_LABEL[state.range]}`,
+      clearUrl: buildSearchUrl(state, { range: "all", page: 1 }),
+    });
+  }
+  if (state.authorId && authorLabelText) {
+    chips.push({
+      key: "author",
+      label: `Author: ${authorLabelText}`,
+      clearUrl: buildSearchUrl(state, { authorId: undefined, page: 1 }),
+    });
+  }
+  if (state.sort !== "relevance") {
+    chips.push({
+      key: "sort",
+      label: `Sort: ${SORT_LABEL[state.sort]}`,
+      clearUrl: buildSearchUrl(state, { sort: "relevance", page: 1 }),
+    });
+  }
+
+  if (chips.length === 0) return null;
+
+  const clearAllUrl = buildSearchUrl(state, {
+    status: "all",
+    range: "all",
+    authorId: undefined,
+    sort: "relevance",
+    page: 1,
+  });
+
   return (
-    <Button variant="outline" size="sm" render={<Link href={`/search?${params.toString()}`} />}>
-      {children}
-    </Button>
+    <div
+      className="flex flex-wrap items-center gap-2 rounded-md border border-dashed border-border bg-muted/30 px-3 py-2"
+      role="region"
+      aria-label="Active filters"
+    >
+      <span className="text-xs font-medium text-muted-foreground">Active:</span>
+      {chips.map((c) => (
+        <Link
+          key={c.key}
+          href={c.clearUrl}
+          className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs hover:bg-muted"
+          aria-label={`Clear ${c.label}`}
+        >
+          <span>{c.label}</span>
+          <span aria-hidden>×</span>
+        </Link>
+      ))}
+      <Link
+        href={clearAllUrl}
+        className="ml-auto text-xs text-muted-foreground underline-offset-2 hover:underline"
+      >
+        Clear all
+      </Link>
+    </div>
   );
 }
 
@@ -149,6 +257,13 @@ export default async function SearchPage({ searchParams }: Props) {
   let results: { items: SearchHit[]; total: number; page: number; per: number } | null = null;
   let validationMessage: string | null = null;
 
+  // Default the parsed filters so the page always has well-typed state, even
+  // before the user has typed a query.
+  let parsedStatus: SearchStatus = "all";
+  let parsedRange: SearchRange = "all";
+  let parsedSort: SearchSort = "relevance";
+  let parsedAuthorId: string | undefined = sp.authorId?.trim() || undefined;
+
   if (rawQ.length > 0) {
     const parsed = searchQuerySchema.safeParse({
       q: rawQ,
@@ -156,16 +271,63 @@ export default async function SearchPage({ searchParams }: Props) {
       groupIds: groupIdsCsv,
       page: String(requestedPage),
       per: String(per),
+      status: sp.status,
+      range: sp.range,
+      authorId: parsedAuthorId,
+      sort: sp.sort,
     });
     if (parsed.success) {
+      parsedStatus = parsed.data.status;
+      parsedRange = parsed.data.range;
+      parsedSort = parsed.data.sort;
+      parsedAuthorId = parsed.data.authorId;
       results = await searchContent(parsed.data);
     } else {
       validationMessage = parsed.error.issues[0]?.message ?? "Invalid query.";
     }
+  } else {
+    // Validate filter shape even with no query so the controls stay in sync.
+    const parsed = searchQuerySchema.safeParse({
+      q: "x",
+      scope: normalized.scope,
+      groupIds: groupIdsCsv,
+      page: String(requestedPage),
+      per: String(per),
+      status: sp.status,
+      range: sp.range,
+      authorId: parsedAuthorId,
+      sort: sp.sort,
+    });
+    if (parsed.success) {
+      parsedStatus = parsed.data.status;
+      parsedRange = parsed.data.range;
+      parsedSort = parsed.data.sort;
+      parsedAuthorId = parsed.data.authorId;
+    }
   }
+
+  const selectedAuthor = parsedAuthorId ? await getUserSummaryById(parsedAuthorId) : null;
+  const initialAuthor: AuthorOption | null = selectedAuthor
+    ? { id: selectedAuthor.id, name: selectedAuthor.name, email: selectedAuthor.email }
+    : null;
+  const authorLabelText = selectedAuthor
+    ? (selectedAuthor.name ?? selectedAuthor.email)
+    : null;
 
   const totalPages = results ? Math.max(Math.ceil(results.total / per), 1) : 1;
   const currentPage = results?.page ?? requestedPage;
+
+  const urlState: CommonUrlState = {
+    q: rawQ,
+    scope: normalized.scope,
+    groupIds: groupIdsCsv,
+    groupSlug: normalized.groupSlugForUrl ?? undefined,
+    status: parsedStatus,
+    range: parsedRange,
+    authorId: parsedAuthorId,
+    sort: parsedSort,
+    per,
+  };
 
   return (
     <div className="space-y-6">
@@ -187,7 +349,13 @@ export default async function SearchPage({ searchParams }: Props) {
         initialScope={normalized.scope}
         initialGroupIds={normalized.groupIds}
         myGroups={myGroups}
+        initialStatus={parsedStatus}
+        initialRange={parsedRange}
+        initialSort={parsedSort}
+        initialAuthor={initialAuthor}
       />
+
+      <ActiveFilters state={urlState} authorLabelText={authorLabelText} />
 
       {validationMessage ? (
         <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
@@ -212,28 +380,27 @@ export default async function SearchPage({ searchParams }: Props) {
             </p>
             <ul className="space-y-3">
               {results.items.map((hit) => (
-                <HitCard key={`${hit.type}-${hit.answerId ?? hit.questionId}`} hit={hit} />
+                <HitCard
+                  key={`${hit.type}-${hit.answerId ?? hit.questionId}`}
+                  hit={hit}
+                  authorFilterUrl={buildSearchUrl(urlState, {
+                    authorId: hit.author.id,
+                    page: 1,
+                  })}
+                />
               ))}
             </ul>
             <div className="flex items-center justify-between">
               <PageLink
                 to={currentPage - 1}
-                q={rawQ}
-                scope={normalized.scope}
-                groupIds={groupIdsCsv}
-                groupSlug={normalized.groupSlugForUrl ?? undefined}
-                per={per}
+                state={urlState}
                 disabled={currentPage <= 1}
               >
                 Previous
               </PageLink>
               <PageLink
                 to={currentPage + 1}
-                q={rawQ}
-                scope={normalized.scope}
-                groupIds={groupIdsCsv}
-                groupSlug={normalized.groupSlugForUrl ?? undefined}
-                per={per}
+                state={urlState}
                 disabled={currentPage >= totalPages}
               >
                 Next
@@ -243,5 +410,34 @@ export default async function SearchPage({ searchParams }: Props) {
         )
       ) : null}
     </div>
+  );
+}
+
+function PageLink({
+  to,
+  state,
+  children,
+  disabled,
+}: {
+  to: number;
+  state: CommonUrlState;
+  children: ReactNode;
+  disabled?: boolean;
+}) {
+  if (disabled) {
+    return (
+      <Button variant="outline" size="sm" disabled>
+        {children}
+      </Button>
+    );
+  }
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      render={<Link href={buildSearchUrl(state, { page: to })} />}
+    >
+      {children}
+    </Button>
   );
 }

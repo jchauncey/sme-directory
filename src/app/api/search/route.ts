@@ -10,6 +10,10 @@ export async function GET(req: Request): Promise<Response> {
     groupIds: url.searchParams.get("groupIds") ?? undefined,
     page: url.searchParams.get("page") ?? undefined,
     per: url.searchParams.get("per") ?? undefined,
+    status: url.searchParams.get("status") ?? undefined,
+    range: url.searchParams.get("range") ?? undefined,
+    authorId: url.searchParams.get("authorId") ?? undefined,
+    sort: url.searchParams.get("sort") ?? undefined,
   });
   if (!parsed.success) return validationFailed(parsed.error);
 
