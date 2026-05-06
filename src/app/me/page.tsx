@@ -12,11 +12,13 @@ import { ProfileGroupList } from "@/components/profile/profile-group-list";
 import { ProfileQuestionList } from "@/components/profile/profile-question-list";
 import { requireAuth } from "@/lib/auth";
 import {
+  getOwnProfile,
   listAnswersByAuthor,
   listFavoritesByUser,
   listGroupsForUser,
   listQuestionsByAuthor,
 } from "@/lib/profile";
+import { EditProfileForm } from "./edit-profile-form";
 
 const PAGE_SIZE = 20;
 
@@ -24,14 +26,17 @@ export default async function MePage() {
   const session = await requireAuth();
   const userId = session.user.id;
 
-  const [questions, answers, groups, favorites] = await Promise.all([
+  const [profile, questions, answers, groups, favorites] = await Promise.all([
+    getOwnProfile(userId),
     listQuestionsByAuthor(userId, { page: 1, per: PAGE_SIZE }),
     listAnswersByAuthor(userId, { page: 1, per: PAGE_SIZE }),
     listGroupsForUser(userId, { includePending: true }),
     listFavoritesByUser(userId),
   ]);
 
-  const display = session.user.name?.trim() || session.user.email;
+  const name = profile?.name ?? session.user.name;
+  const bio = profile?.bio ?? null;
+  const display = name?.trim() || session.user.email;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -44,6 +49,9 @@ export default async function MePage() {
             <span className="font-mono text-xs">{session.user.id}</span>
           </CardDescription>
         </CardHeader>
+        <CardContent className="pt-4">
+          <EditProfileForm name={name} bio={bio} />
+        </CardContent>
       </Card>
 
       <Card>

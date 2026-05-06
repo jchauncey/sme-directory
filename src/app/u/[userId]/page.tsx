@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { MarkdownBody } from "@/components/markdown-body";
 import { ProfileAnswerList } from "@/components/profile/profile-answer-list";
 import { ProfileGroupList } from "@/components/profile/profile-group-list";
 import { ProfileQuestionList } from "@/components/profile/profile-question-list";
@@ -52,6 +53,11 @@ export default async function PublicProfilePage({ params }: Props) {
             </span>
           </CardDescription>
         </CardHeader>
+        {profile.bio ? (
+          <CardContent className="pt-4">
+            <MarkdownBody source={profile.bio} />
+          </CardContent>
+        ) : null}
       </Card>
 
       <Card>
