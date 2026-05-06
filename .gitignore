@@ -37,6 +37,9 @@ yarn-error.log*
 /prisma/dev.db
 /prisma/dev.db-journal
 
+# Uploaded avatars (local storage adapter, dev only)
+/public/uploads/
+
 # Allow committed env template
 !.env.example
 

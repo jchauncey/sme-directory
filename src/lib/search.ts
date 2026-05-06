@@ -8,12 +8,14 @@ export type SearchHitAuthor = {
   id: string;
   email: string | null;
   name: string | null;
+  image: string | null;
 };
 
 export type SearchHitGroup = {
   id: string;
   slug: string;
   name: string;
+  image: string | null;
 };
 
 export type SearchHit = {
@@ -194,11 +196,11 @@ export async function searchContent(opts: SearchOptions): Promise<SearchResultsP
   const [groupRows, authorRows] = await Promise.all([
     db.group.findMany({
       where: { id: { in: [...allGroupIds] } },
-      select: { id: true, slug: true, name: true },
+      select: { id: true, slug: true, name: true, image: true },
     }),
     db.user.findMany({
       where: { id: { in: [...allAuthorIds] } },
-      select: { id: true, email: true, name: true },
+      select: { id: true, email: true, name: true, image: true },
     }),
   ]);
   const groupsById = new Map(groupRows.map((g) => [g.id, g]));

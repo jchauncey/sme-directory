@@ -53,6 +53,7 @@ model Group {
   slug        String    @unique
   name        String
   description String?
+  image       String?
   autoApprove Boolean   @default(false)
   createdById String
   archivedAt  DateTime?

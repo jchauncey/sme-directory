@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AvatarUploadForm } from "@/components/avatar/avatar-upload-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { GroupAvatar } from "@/components/ui/group-avatar";
 import { requireAuth } from "@/lib/auth";
 import { getGroupBySlug } from "@/lib/groups";
 import { isOwner, listPendingApplications } from "@/lib/memberships";
@@ -50,6 +52,31 @@ export default async function GroupSettingsPage({ params }: Props) {
           Back to group
         </Button>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Avatar</CardTitle>
+          <CardDescription>
+            Shown on group cards, the group page, and search results. PNG, JPEG, or WebP — up to 2 MB.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isArchived ? (
+            <p className="text-sm text-muted-foreground">
+              Restore this group to change the avatar.
+            </p>
+          ) : (
+            <div className="flex items-center gap-4">
+              <GroupAvatar group={group} size="lg" />
+              <AvatarUploadForm
+                endpoint={`/api/groups/${group.slug}/avatar`}
+                hasImage={Boolean(group.image)}
+                label="Group avatar"
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

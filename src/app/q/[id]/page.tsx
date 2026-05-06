@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { getSession } from "@/lib/auth";
 import { NotFoundError, getMembership } from "@/lib/memberships";
 import { getQuestionById } from "@/lib/questions";
@@ -119,17 +120,20 @@ export default async function QuestionDetailPage({ params }: Props) {
               ) : null}
             </div>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Asked by {authorLabel(question.author)} in{" "}
-            <Link href={`/groups/${question.group.slug}`} className="underline">
-              {question.group.name}
-            </Link>
+          <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+            <UserAvatar user={question.author} size="sm" />
+            <span>
+              Asked by {authorLabel(question.author)} in{" "}
+              <Link href={`/groups/${question.group.slug}`} className="underline">
+                {question.group.name}
+              </Link>
+            </span>
             {isEdited ? (
-              <span className="ml-2 inline-flex items-center rounded-full border border-zinc-300 bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+              <span className="inline-flex items-center rounded-full border border-zinc-300 bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
                 edited
               </span>
             ) : null}
-          </p>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3 pt-4">
           <div className="flex items-center gap-2">
@@ -220,9 +224,10 @@ export default async function QuestionDetailPage({ params }: Props) {
                             !currentUserId ? "Sign in to favorite." : undefined
                           }
                         />
-                        <p className="text-xs text-muted-foreground">
-                          {authorLabel(a.author)}
-                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <UserAvatar user={a.author} size="sm" />
+                          <span>{authorLabel(a.author)}</span>
+                        </div>
                         {showAcceptButton ? (
                           <AcceptAnswerButton
                             questionId={question.id}
