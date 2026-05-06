@@ -1,7 +1,13 @@
 import { getSession } from "@/lib/auth";
 import { errorToResponse, unauthorized, validationFailed } from "@/lib/api/errors";
+import { db } from "@/lib/db";
 import { getGroupBySlugOrThrow } from "@/lib/groups";
-import { removeMembership, setMembershipStatus } from "@/lib/memberships";
+import {
+  getMembership,
+  removeMembership,
+  setMembershipStatus,
+} from "@/lib/memberships";
+import { notifyMembershipDecision } from "@/lib/notifications";
 import { updateMembershipStatusSchema } from "@/lib/validation/memberships";
 
 type Ctx = { params: Promise<{ slug: string; userId: string }> };
@@ -23,12 +29,30 @@ export async function PATCH(req: Request, ctx: Ctx): Promise<Response> {
 
   try {
     const group = await getGroupBySlugOrThrow(slug);
+    const previous = await getMembership(group.id, userId);
     const membership = await setMembershipStatus(
       group.id,
       userId,
       parsed.data.status,
       session.user.id,
     );
+    const statusChanged = previous?.status !== membership.status;
+    if (statusChanged) {
+      try {
+        const actor = await db.user.findUnique({
+          where: { id: session.user.id },
+          select: { name: true },
+        });
+        await notifyMembershipDecision(
+          parsed.data.status,
+          userId,
+          { slug: group.slug, name: group.name },
+          { id: session.user.id, name: actor?.name ?? session.user.name },
+        );
+      } catch (notifyErr) {
+        console.error("notifyMembershipDecision failed:", notifyErr);
+      }
+    }
     return Response.json({ membership });
   } catch (err) {
     return errorToResponse(err);

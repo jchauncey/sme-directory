@@ -18,10 +18,58 @@ import type {
 
 const POLL_INTERVAL_MS = 30_000;
 
-type ClientNotification = Omit<ParsedNotification, "createdAt" | "readAt"> & {
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+  ? Omit<T, K>
+  : never;
+
+type ClientNotification = DistributiveOmit<
+  ParsedNotification,
+  "createdAt" | "readAt"
+> & {
   createdAt: string;
   readAt: string | null;
 };
+
+type RenderedNotification = {
+  href: string;
+  title: string;
+  subtitle: string;
+};
+
+function renderNotification(n: ClientNotification): RenderedNotification {
+  switch (n.type) {
+    case "question.created":
+      return {
+        href: `/q/${n.payload.questionId}`,
+        title: n.payload.questionTitle,
+        subtitle: `${n.payload.authorName ?? "Someone"} in ${n.payload.groupName}`,
+      };
+    case "answer.posted":
+      return {
+        href: `/q/${n.payload.questionId}`,
+        title: `New answer: ${n.payload.questionTitle}`,
+        subtitle: `${n.payload.answererName ?? "Someone"} answered in ${n.payload.groupName}`,
+      };
+    case "answer.accepted":
+      return {
+        href: `/q/${n.payload.questionId}`,
+        title: "Your answer was accepted",
+        subtitle: `${n.payload.actorName ?? "Someone"} on ${n.payload.questionTitle}`,
+      };
+    case "membership.approved":
+      return {
+        href: "/me/applications",
+        title: `Approved to join ${n.payload.groupName}`,
+        subtitle: `${n.payload.actorName ?? "A moderator"} approved your application`,
+      };
+    case "membership.rejected":
+      return {
+        href: "/me/applications",
+        title: `Application to ${n.payload.groupName} declined`,
+        subtitle: `${n.payload.actorName ?? "A moderator"} declined your application`,
+      };
+  }
+}
 
 function relativeTime(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -165,10 +213,11 @@ export function NotificationBell() {
           ) : (
             items.map((n) => {
               const unread = !n.readAt;
+              const rendered = renderNotification(n);
               return (
                 <Link
                   key={n.id}
-                  href={`/q/${n.payload.questionId}`}
+                  href={rendered.href}
                   onClick={() => handleItemClick(n.id)}
                   className="flex items-start gap-2 px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
                 >
@@ -181,10 +230,10 @@ export function NotificationBell() {
                   />
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="truncate font-medium">
-                      {n.payload.questionTitle}
+                      {rendered.title}
                     </span>
                     <span className="truncate text-xs text-muted-foreground">
-                      {n.payload.authorName ?? "Someone"} in {n.payload.groupName}
+                      {rendered.subtitle}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {relativeTime(n.createdAt)}
