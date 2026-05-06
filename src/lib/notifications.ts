@@ -2,6 +2,12 @@ import "server-only";
 import type { Notification, Question } from "@prisma/client";
 import { db } from "@/lib/db";
 import { listApprovedMemberIds, NotFoundError } from "@/lib/memberships";
+import {
+  type NotificationCategory,
+  categoryFor,
+  filterMuted,
+  isCategory,
+} from "@/lib/notification-preferences";
 
 export const QUESTION_CREATED = "question.created" as const;
 export const ANSWER_POSTED = "answer.posted" as const;
@@ -67,8 +73,23 @@ export type ParsedNotification =
 
 export type NotificationListResult = {
   items: ParsedNotification[];
+  total: number;
+  page: number;
+  per: number;
   unreadCount: number;
 };
+
+export type ListForUserOptions = {
+  page?: number;
+  per?: number;
+  types?: readonly NotificationCategory[];
+  unreadOnly?: boolean;
+  /** Legacy single-page cap (used by the bell dropdown). When provided, overrides page/per. */
+  limit?: number;
+};
+
+export const DEFAULT_PER = 20;
+export const MAX_PER = 50;
 
 const QUESTION_REF_TYPES: ReadonlySet<string> = new Set([
   QUESTION_CREATED,
@@ -92,7 +113,8 @@ export async function notifyQuestionCreated(
   authorName: string | null,
 ): Promise<number> {
   const memberIds = await listApprovedMemberIds(group.id);
-  const recipients = memberIds.filter((id) => id !== question.authorId);
+  const candidates = memberIds.filter((id) => id !== question.authorId);
+  const recipients = await filterMuted(candidates, group.id, "question");
   if (recipients.length === 0) return 0;
 
   const payload: QuestionCreatedPayload = {
@@ -189,17 +211,45 @@ export async function notifyMembershipDecision(
   return 1;
 }
 
+function typeFilterToPrismaWhere(
+  types: readonly NotificationCategory[],
+): { OR: { type: { startsWith: string } }[] } | undefined {
+  if (types.length === 0) return undefined;
+  return { OR: types.map((t) => ({ type: { startsWith: `${t}.` } })) };
+}
+
 export async function listForUser(
   userId: string,
-  opts: { limit?: number } = {},
+  opts: ListForUserOptions = {},
 ): Promise<NotificationListResult> {
-  const limit = opts.limit ?? 20;
-  const [rows, unreadCount] = await Promise.all([
+  const types = (opts.types ?? []).filter((t): t is NotificationCategory => isCategory(t));
+  const unreadOnly = opts.unreadOnly === true;
+
+  const where: {
+    userId: string;
+    readAt?: null;
+    OR?: { type: { startsWith: string } }[];
+  } = { userId };
+  const typeWhere = typeFilterToPrismaWhere(types);
+  if (typeWhere) where.OR = typeWhere.OR;
+  if (unreadOnly) where.readAt = null;
+
+  const legacyLimit = opts.limit;
+  const per =
+    legacyLimit !== undefined
+      ? Math.max(1, Math.min(MAX_PER, legacyLimit))
+      : Math.max(1, Math.min(MAX_PER, opts.per ?? DEFAULT_PER));
+  const page = legacyLimit !== undefined ? 1 : Math.max(1, opts.page ?? 1);
+  const skip = (page - 1) * per;
+
+  const [rows, total, unreadCount] = await Promise.all([
     db.notification.findMany({
-      where: { userId },
+      where,
       orderBy: { createdAt: "desc" },
-      take: limit,
+      skip,
+      take: per,
     }),
+    db.notification.count({ where }),
     db.notification.count({ where: { userId, readAt: null } }),
   ]);
 
@@ -229,7 +279,7 @@ export async function listForUser(
     if (!QUESTION_REF_TYPES.has(p.type)) return true;
     return !deletedIds.has((p.payload as { questionId: string }).questionId);
   });
-  return { items, unreadCount };
+  return { items, total, page, per, unreadCount };
 }
 
 export async function markRead(
@@ -255,3 +305,5 @@ export async function markAllRead(userId: string): Promise<number> {
   });
   return result.count;
 }
+
+export { categoryFor };
