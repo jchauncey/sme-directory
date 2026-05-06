@@ -103,6 +103,33 @@ describe("listQuestionsByAuthor", () => {
     expect(second.answerCount).toBe(1);
     expect(second.voteScore).toBe(1);
   });
+
+  it("respects page boundaries (page 2 returns expected slice)", async () => {
+    const author = await makeUser("qa-paginate");
+    const group = await createGroup(
+      { name: "QA Pag", slug: uniq("qap"), autoApprove: true },
+      author.id,
+    );
+    const ids: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const q = await createQuestion(
+        { title: `Q-${i}`, body: "body" },
+        group.id,
+        author.id,
+      );
+      ids.push(q.id);
+      await new Promise((r) => setTimeout(r, 2));
+    }
+    // Newest-first → ids reversed.
+    const expected = [...ids].reverse();
+    const p1 = await listQuestionsByAuthor(author.id, { page: 1, per: 2 });
+    expect(p1.total).toBe(5);
+    expect(p1.items.map((q) => q.id)).toEqual(expected.slice(0, 2));
+    const p2 = await listQuestionsByAuthor(author.id, { page: 2, per: 2 });
+    expect(p2.items.map((q) => q.id)).toEqual(expected.slice(2, 4));
+    const p3 = await listQuestionsByAuthor(author.id, { page: 3, per: 2 });
+    expect(p3.items.map((q) => q.id)).toEqual(expected.slice(4, 5));
+  });
 });
 
 describe("listAnswersByAuthor", () => {
@@ -179,6 +206,35 @@ describe("listAnswersByAuthor", () => {
 
     const page = await listAnswersByAuthor(me.id, { page: 1, per: 20 });
     expect(page.total).toBe(0);
+  });
+
+  it("respects page boundaries (page 2 returns expected slice)", async () => {
+    const author = await makeUser("ans-paginate");
+    const group = await createGroup(
+      { name: "Ans Pag", slug: uniq("ansp"), autoApprove: true },
+      author.id,
+    );
+    const q = await createQuestion(
+      { title: "Pag Q", body: "?" },
+      group.id,
+      author.id,
+    );
+    const ids: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const a = await db.answer.create({
+        data: { questionId: q.id, authorId: author.id, body: `ans-${i}` },
+      });
+      ids.push(a.id);
+      await new Promise((r) => setTimeout(r, 2));
+    }
+    const expected = [...ids].reverse();
+    const p1 = await listAnswersByAuthor(author.id, { page: 1, per: 2 });
+    expect(p1.total).toBe(5);
+    expect(p1.items.map((a) => a.id)).toEqual(expected.slice(0, 2));
+    const p2 = await listAnswersByAuthor(author.id, { page: 2, per: 2 });
+    expect(p2.items.map((a) => a.id)).toEqual(expected.slice(2, 4));
+    const p3 = await listAnswersByAuthor(author.id, { page: 3, per: 2 });
+    expect(p3.items.map((a) => a.id)).toEqual(expected.slice(4, 5));
   });
 });
 

@@ -29,6 +29,7 @@ const {
   isOwnerOrModerator,
   leaveGroup,
   listApprovedMembers,
+  listApprovedMembersPage,
   listPendingApplications,
   listSuccessorCandidates,
   NotAMemberError,
@@ -557,5 +558,60 @@ describe("listApprovedMembers / listSuccessorCandidates", () => {
     });
     const list = await listSuccessorCandidates(group.id, owner.id);
     expect(list.map((m) => m.userId)).toEqual([u1.id]);
+  });
+});
+
+describe("listApprovedMembersPage", () => {
+  it("returns paginated slices ordered by joinedAt asc", async () => {
+    const { owner, group } = await makeGroup(next("paged-members"));
+    const created: string[] = [owner.id];
+    // Ensure subsequent membership createdAt timestamps are strictly after
+    // the owner's (created inside makeGroup) so ordering is deterministic.
+    await new Promise((r) => setTimeout(r, 5));
+    for (let i = 0; i < 5; i++) {
+      const u = await makeUser(`paged-${i}`);
+      await db.membership.create({
+        data: { groupId: group.id, userId: u.id, role: "member", status: "approved" },
+      });
+      created.push(u.id);
+      await new Promise((r) => setTimeout(r, 5));
+    }
+
+    const p1 = await listApprovedMembersPage(group.id, { page: 1, per: 2 });
+    expect(p1.total).toBe(6);
+    expect(p1.items.map((m) => m.userId)).toEqual(created.slice(0, 2));
+
+    const p2 = await listApprovedMembersPage(group.id, { page: 2, per: 2 });
+    expect(p2.items.map((m) => m.userId)).toEqual(created.slice(2, 4));
+
+    const p3 = await listApprovedMembersPage(group.id, { page: 3, per: 2 });
+    expect(p3.items.map((m) => m.userId)).toEqual(created.slice(4, 6));
+
+    const p4 = await listApprovedMembersPage(group.id, { page: 4, per: 2 });
+    expect(p4.items).toEqual([]);
+    expect(p4.total).toBe(6);
+  });
+
+  it("excludes pending and rejected memberships from total and items", async () => {
+    const { owner, group } = await makeGroup(next("paged-filtered"));
+    const approved = await makeUser("paged-a");
+    await db.membership.create({
+      data: { groupId: group.id, userId: approved.id, role: "member", status: "approved" },
+    });
+    const pending = await makeUser("paged-p");
+    await db.membership.create({
+      data: { groupId: group.id, userId: pending.id, role: "member", status: "pending" },
+    });
+    const rejected = await makeUser("paged-r");
+    await db.membership.create({
+      data: { groupId: group.id, userId: rejected.id, role: "member", status: "rejected" },
+    });
+    const page = await listApprovedMembersPage(group.id, { page: 1, per: 20 });
+    expect(page.total).toBe(2);
+    const ids = page.items.map((m) => m.userId);
+    expect(ids).toContain(owner.id);
+    expect(ids).toContain(approved.id);
+    expect(ids).not.toContain(pending.id);
+    expect(ids).not.toContain(rejected.id);
   });
 });

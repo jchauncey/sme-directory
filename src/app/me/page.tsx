@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Pagination } from "@/components/ui/pagination";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { AvatarUploadForm } from "@/components/avatar/avatar-upload-form";
 import { ProfileAnswerList } from "@/components/profile/profile-answer-list";
@@ -25,18 +26,38 @@ import { EditProfileForm } from "./edit-profile-form";
 
 const PAGE_SIZE = 20;
 
-export default async function MePage() {
+type Props = {
+  searchParams: Promise<{ qpage?: string; apage?: string }>;
+};
+
+export default async function MePage({ searchParams }: Props) {
   const session = await requireAuth();
   const userId = session.user.id;
+  const sp = await searchParams;
+  const qPage = Math.max(Number(sp.qpage) || 1, 1);
+  const aPage = Math.max(Number(sp.apage) || 1, 1);
 
   const [profile, questions, answers, groups, favorites, preferences] = await Promise.all([
     getOwnProfile(userId),
-    listQuestionsByAuthor(userId, { page: 1, per: PAGE_SIZE }),
-    listAnswersByAuthor(userId, { page: 1, per: PAGE_SIZE }),
+    listQuestionsByAuthor(userId, { page: qPage, per: PAGE_SIZE }),
+    listAnswersByAuthor(userId, { page: aPage, per: PAGE_SIZE }),
     listGroupsForUser(userId, { includePending: true }),
     listFavoritesByUser(userId),
     listPreferencesForUser(userId),
   ]);
+
+  const qTotalPages = Math.max(Math.ceil(questions.total / PAGE_SIZE), 1);
+  const aTotalPages = Math.max(Math.ceil(answers.total / PAGE_SIZE), 1);
+
+  const buildMeHref = (overrides: { qpage?: number; apage?: number }): string => {
+    const params = new URLSearchParams();
+    const nextQ = overrides.qpage ?? qPage;
+    const nextA = overrides.apage ?? aPage;
+    if (nextQ > 1) params.set("qpage", String(nextQ));
+    if (nextA > 1) params.set("apage", String(nextA));
+    const qs = params.toString();
+    return qs ? `/me?${qs}` : "/me";
+  };
 
   const mutedTypesByGroupId = Object.fromEntries(
     preferences.map((p) => [p.groupId, p.mutedTypes]),
@@ -78,7 +99,7 @@ export default async function MePage() {
             Your questions {questions.total > 0 ? `(${questions.total})` : ""}
           </CardTitle>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="space-y-4 pt-4">
           <ProfileQuestionList
             items={questions.items}
             emptyState={
@@ -91,6 +112,12 @@ export default async function MePage() {
               </>
             }
           />
+          <Pagination
+            currentPage={qPage}
+            totalPages={qTotalPages}
+            buildHref={(p) => buildMeHref({ qpage: p })}
+            label="Questions pagination"
+          />
         </CardContent>
       </Card>
 
@@ -100,10 +127,16 @@ export default async function MePage() {
             Your answers {answers.total > 0 ? `(${answers.total})` : ""}
           </CardTitle>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="space-y-4 pt-4">
           <ProfileAnswerList
             items={answers.items}
             emptyState="You haven't posted any answers yet."
+          />
+          <Pagination
+            currentPage={aPage}
+            totalPages={aTotalPages}
+            buildHref={(p) => buildMeHref({ apage: p })}
+            label="Answers pagination"
           />
         </CardContent>
       </Card>

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { GroupAvatar } from "@/components/ui/group-avatar";
 import { NotificationPreferencesControl } from "@/components/notification-preferences-control";
+import { Pagination } from "@/components/ui/pagination";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { getSession } from "@/lib/auth";
 import { getGroupBySlug } from "@/lib/groups";
@@ -22,26 +23,40 @@ import { getPreferenceForGroup } from "@/lib/notification-preferences";
 import { listQuestionsForGroup } from "@/lib/questions";
 import { MembershipActions } from "./membership-actions";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ page?: string }>;
+};
 
 const MEMBER_PREVIEW_LIMIT = 12;
+const QUESTIONS_PER_PAGE = 20;
 
 function authorLabel(a: { name: string | null; email: string | null }): string {
   return a.name ?? a.email ?? "unknown";
 }
 
-export default async function GroupDetailPage({ params }: Props) {
-  const { slug } = await params;
+export default async function GroupDetailPage({ params, searchParams }: Props) {
+  const [{ slug }, sp] = await Promise.all([params, searchParams]);
   const group = await getGroupBySlug(slug);
   if (!group) notFound();
+
+  const page = Math.max(Number(sp.page) || 1, 1);
 
   const session = await getSession();
   const [memberCount, members, membership, questions] = await Promise.all([
     countApprovedMembers(group.id),
     listApprovedMembers(group.id, MEMBER_PREVIEW_LIMIT),
     session ? getMembership(group.id, session.user.id) : Promise.resolve(null),
-    listQuestionsForGroup(group.id, { page: 1, per: 20 }),
+    listQuestionsForGroup(group.id, { page, per: QUESTIONS_PER_PAGE }),
   ]);
+
+  const questionsTotalPages = Math.max(
+    Math.ceil(questions.total / QUESTIONS_PER_PAGE),
+    1,
+  );
+
+  const buildQuestionsHref = (p: number): string =>
+    p > 1 ? `/groups/${group.slug}?page=${p}` : `/groups/${group.slug}`;
 
   const isOwner = membership?.role === "owner" && membership.status === "approved";
   const isApproved = membership?.status === "approved";
@@ -141,7 +156,7 @@ export default async function GroupDetailPage({ params }: Props) {
                 }`}
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-2">
+        <CardContent className="space-y-3 pt-2">
           {members.length === 0 ? (
             <p className="text-sm text-muted-foreground">No members yet.</p>
           ) : (
@@ -159,6 +174,14 @@ export default async function GroupDetailPage({ params }: Props) {
               ))}
             </ul>
           )}
+          {members.length < memberCount ? (
+            <Link
+              href={`/groups/${group.slug}/members`}
+              className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+            >
+              View all members →
+            </Link>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -186,26 +209,34 @@ export default async function GroupDetailPage({ params }: Props) {
             Questions {questions.total > 0 ? `(${questions.total})` : ""}
           </CardTitle>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="space-y-4 pt-4">
           {questions.items.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No questions yet.
               {isApproved ? " Be the first to ask one." : ""}
             </p>
           ) : (
-            <ul className="divide-y divide-border">
-              {questions.items.map((q) => (
-                <li key={q.id} className="py-3 first:pt-0 last:pb-0">
-                  <Link href={`/q/${q.id}`} className="text-sm font-medium hover:underline">
-                    {q.title}
-                  </Link>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {authorLabel(q.author)} · {q.answerCount}{" "}
-                    {q.answerCount === 1 ? "answer" : "answers"} · Score {q.voteScore}
-                  </p>
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="divide-y divide-border">
+                {questions.items.map((q) => (
+                  <li key={q.id} className="py-3 first:pt-0 last:pb-0">
+                    <Link href={`/q/${q.id}`} className="text-sm font-medium hover:underline">
+                      {q.title}
+                    </Link>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {authorLabel(q.author)} · {q.answerCount}{" "}
+                      {q.answerCount === 1 ? "answer" : "answers"} · Score {q.voteScore}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <Pagination
+                currentPage={page}
+                totalPages={questionsTotalPages}
+                buildHref={buildQuestionsHref}
+                label="Questions pagination"
+              />
+            </>
           )}
         </CardContent>
       </Card>

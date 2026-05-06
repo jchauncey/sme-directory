@@ -159,7 +159,7 @@ describe("listGroups", () => {
     // Force a small gap so createdAt ordering is unambiguous on coarse clocks.
     await new Promise((r) => setTimeout(r, 5));
     const b = await createGroup({ name: "B", slug: `${tag}-b` }, owner.id);
-    const list = await listGroups({ sort: "newest" });
+    const list = (await listGroups({ sort: "newest" })).items;
     const indexA = list.findIndex((g) => g.id === a.id);
     const indexB = list.findIndex((g) => g.id === b.id);
     expect(indexB).toBeGreaterThanOrEqual(0);
@@ -182,7 +182,7 @@ describe("listGroups", () => {
     await db.membership.create({
       data: { groupId: group.id, userId: m3.id, role: "member", status: "rejected" },
     });
-    const list = await listGroups({ sort: "newest" });
+    const list = (await listGroups({ sort: "newest" })).items;
     const found = list.find((g) => g.id === group.id);
     expect(found).toBeDefined();
     // owner + m1 = 2
@@ -200,7 +200,7 @@ describe("listGroups", () => {
         data: { groupId: big.id, userId: u.id, role: "member", status: "approved" },
       });
     }
-    const list = await listGroups({ sort: "members" });
+    const list = (await listGroups({ sort: "members" })).items;
     const indexBig = list.findIndex((g) => g.id === big.id);
     const indexSmall = list.findIndex((g) => g.id === small.id);
     expect(indexBig).toBeGreaterThanOrEqual(0);
@@ -214,13 +214,41 @@ describe("listGroups", () => {
     const group = await createGroup({ name: "Archy", slug }, owner.id);
     await archiveGroup(slug, owner.id);
 
-    const defaultList = await listGroups({ sort: "newest" });
+    const defaultList = (await listGroups({ sort: "newest" })).items;
     expect(defaultList.find((g) => g.id === group.id)).toBeUndefined();
 
-    const fullList = await listGroups({ sort: "newest", includeArchived: true });
+    const fullList = (await listGroups({ sort: "newest", includeArchived: true })).items;
     const found = fullList.find((g) => g.id === group.id);
     expect(found).toBeDefined();
     expect(found!.archivedAt).not.toBeNull();
+  });
+
+  it("respects page boundaries (page 2 returns expected slice)", async () => {
+    const owner = await makeUser("ls-page");
+    const tag = `ls-page-${Date.now()}`;
+    const created: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const g = await createGroup(
+        { name: `G${i}`, slug: `${tag}-${i}` },
+        owner.id,
+      );
+      created.push(g.id);
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    // Newest-first → reversed ids.
+    const expected = [...created].reverse();
+
+    // These five are the most recently created in this DB, so under
+    // newest-first ordering they occupy the first slots.
+    const p1 = await listGroups({ sort: "newest", page: 1, per: 2 });
+    expect(p1.total).toBeGreaterThanOrEqual(5);
+    expect(p1.items.map((g) => g.id)).toEqual(expected.slice(0, 2));
+
+    const p2 = await listGroups({ sort: "newest", page: 2, per: 2 });
+    expect(p2.items.map((g) => g.id)).toEqual(expected.slice(2, 4));
+
+    const p3 = await listGroups({ sort: "newest", page: 3, per: 2 });
+    expect(p3.items.map((g) => g.id).slice(0, 1)).toEqual(expected.slice(4, 5));
   });
 });
 
