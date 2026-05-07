@@ -20,11 +20,23 @@ import {
   updateQuestion,
 } from "@/lib/questions";
 import { db } from "@/lib/db";
+import { RateLimitError, assertRateLimitForAction } from "@/lib/rate-limit";
 import {
   createAnswerSchema,
   updateAnswerSchema,
 } from "@/lib/validation/answers";
 import { updateQuestionSchema } from "@/lib/validation/questions";
+
+function rateLimitedFormState<T extends { error?: string }>(
+  err: RateLimitError,
+  extra: Omit<T, "error">,
+): T {
+  const seconds = Math.max(1, Math.ceil(err.retryAfterMs / 1000));
+  return {
+    ...(extra as object),
+    error: `Too many requests. Try again in ${seconds} seconds.`,
+  } as T;
+}
 
 export type FieldError = { path: string; message: string };
 
@@ -49,6 +61,15 @@ export async function createAnswerAction(
   const session = await getSession();
   if (!session) {
     return { error: "You must be signed in to post an answer." };
+  }
+
+  try {
+    await assertRateLimitForAction("questions");
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      return rateLimitedFormState<AnswerFormState>(err, {});
+    }
+    throw err;
   }
 
   const raw = { body: String(formData.get("body") ?? "") };
@@ -110,6 +131,15 @@ export async function updateAnswerAction(
     return { error: "You must be signed in to edit an answer." };
   }
 
+  try {
+    await assertRateLimitForAction("questions");
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      return rateLimitedFormState<AnswerFormState>(err, {});
+    }
+    throw err;
+  }
+
   const raw = { body: String(formData.get("body") ?? "") };
   const parsed = updateAnswerSchema.safeParse(raw);
   if (!parsed.success) {
@@ -162,6 +192,15 @@ export async function updateQuestionAction(
   const session = await getSession();
   if (!session) {
     return { error: "You must be signed in to edit a question." };
+  }
+
+  try {
+    await assertRateLimitForAction("questions");
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      return rateLimitedFormState<QuestionFormState>(err, {});
+    }
+    throw err;
   }
 
   const raw = {
