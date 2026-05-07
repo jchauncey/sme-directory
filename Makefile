@@ -75,5 +75,6 @@ db-clean: ## Delete the dev SQLite file (DESTRUCTIVE — wipes data)
 	rm -f prisma/dev.db prisma/dev.db-journal
 
 db-init: install .env ## Refresh dev DB: apply migrations + run seed
+	npx prisma generate
 	npx prisma migrate deploy
 	npx prisma db seed
