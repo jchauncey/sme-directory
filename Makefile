@@ -3,7 +3,7 @@
 
 .DEFAULT_GOAL := help
 .PHONY: help setup install dev build start lint typecheck format format-check check clean reset \
-        db-migrate db-deploy db-reset db-seed db-studio
+        db-migrate db-deploy db-reset db-seed db-studio db-init db-clean
 
 NODE_MODULES := node_modules/.package-lock.json
 
@@ -70,3 +70,10 @@ db-seed: ## Seed the dev database (TODO: #17)
 
 db-studio: install ## Open Prisma Studio
 	npm run db:studio
+
+db-clean: ## Delete the dev SQLite file (DESTRUCTIVE — wipes data)
+	rm -f prisma/dev.db prisma/dev.db-journal
+
+db-init: install .env ## Refresh dev DB: apply migrations + run seed
+	npx prisma migrate deploy
+	npx prisma db seed
