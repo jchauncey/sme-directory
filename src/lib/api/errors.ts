@@ -9,6 +9,7 @@ import {
 } from "@/lib/memberships";
 import { SlugConflictError } from "@/lib/groups";
 import { ImageTooLargeError, InvalidImageError } from "@/lib/avatars";
+import { logServerError } from "@/lib/log-server-error";
 
 export function unauthorized(): Response {
   return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -59,6 +60,6 @@ export function errorToResponse(err: unknown): Response {
     return validationFailed(err);
   }
   // Unknown — surface a generic 500. The error is intentionally not echoed back.
-  console.error("Unhandled error in route handler:", err);
+  logServerError("api", err);
   return Response.json({ error: "InternalServerError" }, { status: 500 });
 }
