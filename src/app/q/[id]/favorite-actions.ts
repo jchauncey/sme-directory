@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
+import { assertCsrfToken, CsrfError } from "@/lib/csrf-server";
 import { NotFoundError } from "@/lib/memberships";
 import { toggleFavorite, type FavoriteTargetType } from "@/lib/favorites";
 
@@ -13,7 +14,14 @@ export async function favoriteAction(
   targetType: FavoriteTargetType,
   targetId: string,
   questionId: string,
+  csrfToken: string,
 ): Promise<FavoriteActionResult> {
+  try {
+    await assertCsrfToken(csrfToken);
+  } catch (err) {
+    if (err instanceof CsrfError) return { ok: false, error: err.message };
+    throw err;
+  }
   const session = await getSession();
   if (!session) {
     return { ok: false, error: "You must be signed in to favorite." };

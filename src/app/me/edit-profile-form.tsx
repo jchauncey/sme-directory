@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { CsrfField } from "@/components/csrf-field";
 import { MarkdownBody } from "@/components/markdown-body";
 import { updateMeAction, type MeFormState } from "./actions";
 
@@ -29,6 +30,7 @@ export function EditProfileForm({ name, bio }: Props) {
   if (editing) {
     return (
       <form action={formAction} className="space-y-3">
+        <CsrfField />
         <div className="space-y-1">
           <label htmlFor="edit-profile-name" className="block text-sm font-medium">
             Name

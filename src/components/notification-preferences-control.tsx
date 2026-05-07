@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { CSRF_HEADER, readCsrfToken } from "@/lib/csrf-client";
 import {
   NOTIFICATION_CATEGORIES,
   type NotificationCategory,
@@ -33,7 +34,10 @@ export function NotificationPreferencesControl({
     try {
       const res = await fetch(`/api/notification-preferences/${groupId}`, {
         method: "PUT",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          [CSRF_HEADER]: readCsrfToken(),
+        },
         body: JSON.stringify({ mutedTypes: next }),
       });
       if (!res.ok) {

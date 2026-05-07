@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { CsrfField } from "@/components/csrf-field";
 import { signInAction, type SignInState } from "./actions";
 
 const initialState: SignInState = {};
@@ -10,6 +11,7 @@ export function LoginForm() {
 
   return (
     <form action={formAction} className="space-y-4">
+      <CsrfField />
       <div className="space-y-1">
         <label htmlFor="email" className="block text-sm font-medium">
           Email

@@ -1,7 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
+import { CsrfField } from "@/components/csrf-field";
 import { MarkdownBody } from "@/components/markdown-body";
+import { readCsrfToken } from "@/lib/csrf-client";
 import {
   deleteAnswerAction,
   updateAnswerAction,
@@ -51,7 +53,7 @@ export function AnswerActions({
     if (!confirm("Delete this answer? This cannot be undone.")) return;
     setDeleteError(null);
     startDelete(async () => {
-      const result = await deleteAnswerAction(answerId, questionId);
+      const result = await deleteAnswerAction(answerId, questionId, readCsrfToken());
       if (result.error) setDeleteError(result.error);
     });
   };
@@ -59,6 +61,7 @@ export function AnswerActions({
   if (editing) {
     return (
       <form action={editFormAction} className="space-y-2">
+        <CsrfField />
         <textarea
           name="body"
           rows={6}

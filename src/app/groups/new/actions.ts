@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
+import { assertCsrf, CsrfError } from "@/lib/csrf-server";
 import { createGroup, SlugConflictError } from "@/lib/groups";
 import { createGroupSchema } from "@/lib/validation/groups";
 
@@ -17,6 +18,12 @@ export async function createGroupAction(
   _prev: CreateGroupState,
   formData: FormData,
 ): Promise<CreateGroupState> {
+  try {
+    await assertCsrf(formData);
+  } catch (err) {
+    if (err instanceof CsrfError) return { error: err.message };
+    throw err;
+  }
   const session = await getSession();
   if (!session) {
     return { error: "You must be signed in to create a group." };

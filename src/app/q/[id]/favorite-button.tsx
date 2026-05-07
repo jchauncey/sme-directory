@@ -2,6 +2,7 @@
 
 import { StarIcon } from "lucide-react";
 import { useState, useTransition } from "react";
+import { readCsrfToken } from "@/lib/csrf-client";
 import { favoriteAction } from "./favorite-actions";
 import type { FavoriteTargetType } from "@/lib/favorites";
 
@@ -33,7 +34,7 @@ export function FavoriteButton({
     setFavorited(!prevFavorited);
 
     startTransition(async () => {
-      const result = await favoriteAction(targetType, targetId, questionId);
+      const result = await favoriteAction(targetType, targetId, questionId, readCsrfToken());
       if (result.ok) {
         setFavorited(result.favorited);
       } else {

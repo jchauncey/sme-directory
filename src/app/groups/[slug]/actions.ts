@@ -3,10 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
+import { assertCsrf } from "@/lib/csrf-server";
 import { getGroupBySlug } from "@/lib/groups";
 import { leaveGroup, transferOwnershipAndLeave } from "@/lib/memberships";
 
 export async function confirmLeaveAction(slug: string, formData: FormData): Promise<void> {
+  await assertCsrf(formData);
   const session = await getSession();
   if (!session) {
     redirect(`/login?returnTo=/groups/${slug}`);

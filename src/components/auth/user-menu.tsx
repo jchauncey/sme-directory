@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { signOutAction } from "@/app/login/actions";
 import { Button } from "@/components/ui/button";
+import { CsrfField } from "@/components/csrf-field";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   DropdownMenu,
@@ -64,6 +65,7 @@ export function UserMenu() {
         <DropdownMenuItem render={<Link href="/account" />}>Account</DropdownMenuItem>
         <DropdownMenuSeparator />
         <form action={signOutAction}>
+          <CsrfField />
           <DropdownMenuItem render={<button type="submit" className="w-full" />}>
             Sign out
           </DropdownMenuItem>

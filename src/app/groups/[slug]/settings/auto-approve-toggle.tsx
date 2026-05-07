@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { toast } from "sonner";
+import { CsrfField } from "@/components/csrf-field";
 import { toggleAutoApproveAction, type ToggleAutoApproveState } from "./actions";
 
 const initialState: ToggleAutoApproveState = {};
@@ -24,6 +25,7 @@ export function AutoApproveToggle({ slug, initial }: Props) {
       action={formAction}
       className="flex items-center justify-between gap-4 rounded-md border p-4"
     >
+      <CsrfField />
       <input type="hidden" name="slug" value={slug} />
       <div className="space-y-0.5">
         <label htmlFor="autoApprove" className="text-sm font-medium">

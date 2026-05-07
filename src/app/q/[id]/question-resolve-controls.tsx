@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { readCsrfToken } from "@/lib/csrf-client";
 import { acceptAnswerAction, reopenQuestionAction } from "./actions";
 
 type Props = {
@@ -30,7 +31,7 @@ export function QuestionResolveControls({
   const onMarkAnswered = () => {
     setError(null);
     startTransition(async () => {
-      const result = await acceptAnswerAction(questionId, null);
+      const result = await acceptAnswerAction(questionId, null, readCsrfToken());
       if (result.error) setError(result.error);
     });
   };
@@ -38,7 +39,7 @@ export function QuestionResolveControls({
   const onReopen = () => {
     setError(null);
     startTransition(async () => {
-      const result = await reopenQuestionAction(questionId);
+      const result = await reopenQuestionAction(questionId, readCsrfToken());
       if (result.error) setError(result.error);
     });
   };

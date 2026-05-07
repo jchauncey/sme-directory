@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { readCsrfToken } from "@/lib/csrf-client";
 import { deleteQuestionAction } from "./actions";
 
 type Props = {
@@ -21,7 +22,7 @@ export function QuestionDeleteButton({ questionId }: Props) {
     }
     setError(null);
     startTransition(async () => {
-      const result = await deleteQuestionAction(questionId);
+      const result = await deleteQuestionAction(questionId, readCsrfToken());
       if (result.error) setError(result.error);
     });
   };

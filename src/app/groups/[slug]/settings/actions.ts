@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
+import { assertCsrf, assertCsrfToken, CsrfError } from "@/lib/csrf-server";
 import { archiveGroup, unarchiveGroup, updateGroup } from "@/lib/groups";
 import { AuthorizationError, ConflictError, NotFoundError } from "@/lib/memberships";
 
@@ -14,6 +15,12 @@ export async function toggleAutoApproveAction(
   _prev: ToggleAutoApproveState,
   formData: FormData,
 ): Promise<ToggleAutoApproveState> {
+  try {
+    await assertCsrf(formData);
+  } catch (err) {
+    if (err instanceof CsrfError) return { error: err.message };
+    throw err;
+  }
   const session = await getSession();
   if (!session) return { error: "You must be signed in." };
 
@@ -43,7 +50,13 @@ export async function toggleAutoApproveAction(
 
 export type ArchiveActionResult = { error?: string; ok?: true };
 
-export async function archiveGroupAction(slug: string): Promise<ArchiveActionResult> {
+export async function archiveGroupAction(slug: string, csrfToken: string): Promise<ArchiveActionResult> {
+  try {
+    await assertCsrfToken(csrfToken);
+  } catch (err) {
+    if (err instanceof CsrfError) return { error: err.message };
+    throw err;
+  }
   const session = await getSession();
   if (!session) return { error: "You must be signed in." };
 
@@ -69,7 +82,13 @@ export async function archiveGroupAction(slug: string): Promise<ArchiveActionRes
   }
 }
 
-export async function unarchiveGroupAction(slug: string): Promise<ArchiveActionResult> {
+export async function unarchiveGroupAction(slug: string, csrfToken: string): Promise<ArchiveActionResult> {
+  try {
+    await assertCsrfToken(csrfToken);
+  } catch (err) {
+    if (err instanceof CsrfError) return { error: err.message };
+    throw err;
+  }
   const session = await getSession();
   if (!session) return { error: "You must be signed in." };
 

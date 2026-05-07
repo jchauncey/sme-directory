@@ -23,6 +23,11 @@ The plan in [PROJECT_PLAN.md](PROJECT_PLAN.md) is a proposal, not a decided cont
 - **Search dual-track**: SQLite FTS5 in dev and Postgres `tsvector` in prod, gated by a `DATABASE_PROVIDER` env. Plan code so the query layer can branch on this without leaking DB-specific SQL into route handlers.
 - **Notifications are pull-based for v1**: `Notification` rows are fanned out at write-time and polled by the client. WebSockets / push are explicitly out of scope.
 - **Authorization model**: membership status (`pending` / `approved` / `rejected`) and role (`member` / `moderator` / `owner`) on `Membership` are the basis for nearly every write check. Posting questions, posting answers, accepting answers, and approving applications all key off these — keep the check helpers centralized.
+- **CSRF protection (issue [#50](https://github.com/HundredAcreStudio/sme-directory/issues/50))**: double-submit cookie pattern. A non-httpOnly `sme_csrf` cookie is issued by [src/middleware.ts](src/middleware.ts) on the first non-mutating request (and rotated by `signIn` / cleared by `signOut`). The same middleware enforces a `x-csrf-token` header check on POST/PATCH/PUT/DELETE under `/api/*` and returns 403 on mismatch. New routes / actions inherit protection automatically as long as they follow these rules:
+  - **API route handlers** (`app/api/**`): nothing to do — middleware gates them. Tests bypass middleware so route unit tests don't need a token.
+  - **Client `fetch` callsites** that target `/api/*` with a mutating method: use `csrfFetch` from [src/lib/csrf-client.ts](src/lib/csrf-client.ts), or add `[CSRF_HEADER]: readCsrfToken()` to the headers object.
+  - **Server actions invoked via `<form action={...}>`**: render `<CsrfField />` (client) or `<CsrfInput />` (server) inside the form, then `await assertCsrf(formData)` at the top of the action. On `CsrfError`, return the error in form state — do not let it bubble.
+  - **Server actions invoked programmatically** (e.g. `await voteAction(...)` from a client component): accept a `csrfToken: string` argument, pass `readCsrfToken()` from the caller, and `await assertCsrfToken(csrfToken)` at the top of the action.
 
 ## Workflow conventions
 

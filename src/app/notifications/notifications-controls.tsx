@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import { csrfFetch } from "@/lib/csrf-client";
 import { NOTIFICATION_CATEGORIES, type NotificationCategory } from "@/lib/notification-categories";
 
 type Props = {
@@ -59,7 +60,7 @@ export function NotificationsControls({ selectedTypes, unreadOnly, per, hasUnrea
 
   async function markAllRead() {
     try {
-      const res = await fetch("/api/notifications/read-all", { method: "POST" });
+      const res = await csrfFetch("/api/notifications/read-all", { method: "POST" });
       if (!res.ok) return;
       router.refresh();
     } catch {
@@ -164,7 +165,7 @@ export function MarkRowReadButton({
 
   async function onClick() {
     try {
-      const res = await fetch(`/api/notifications/${id}/read`, { method: "POST" });
+      const res = await csrfFetch(`/api/notifications/${id}/read`, { method: "POST" });
       if (!res.ok) return;
       startTransition(() => router.refresh());
     } catch {

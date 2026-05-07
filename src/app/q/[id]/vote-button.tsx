@@ -2,6 +2,7 @@
 
 import { ChevronUpIcon } from "lucide-react";
 import { useState, useTransition } from "react";
+import { readCsrfToken } from "@/lib/csrf-client";
 import { voteAction } from "./vote-actions";
 import type { VoteTargetType } from "@/lib/votes";
 
@@ -39,7 +40,7 @@ export function VoteButton({
     setVoted(!prevVoted);
 
     startTransition(async () => {
-      const result = await voteAction(targetType, targetId, questionId);
+      const result = await voteAction(targetType, targetId, questionId, readCsrfToken());
       if (result.ok) {
         setScore(result.voteScore);
         setVoted(result.voted);

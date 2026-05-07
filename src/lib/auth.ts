@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SignJWT, jwtVerify } from "jose";
 import { db } from "@/lib/db";
+import { CSRF_COOKIE, generateCsrfToken } from "@/lib/csrf";
 
 export type Session = {
   user: {
@@ -73,6 +74,16 @@ async function writeSessionCookie(session: Session): Promise<void> {
     path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,
   });
+  // Issue a fresh CSRF token alongside the session so the double-submit cookie
+  // is rotated on every sign-in (the middleware also issues one for anonymous
+  // visits, but we rotate here so a recycled browser starts a clean session).
+  store.set(CSRF_COOKIE, generateCsrfToken(), {
+    httpOnly: false,
+    sameSite: "lax",
+    secure: isProduction(),
+    path: "/",
+    maxAge: SESSION_MAX_AGE_SECONDS,
+  });
 }
 
 export async function getSession(): Promise<Session | null> {
@@ -129,4 +140,5 @@ export async function refreshSession(): Promise<Session | null> {
 export async function signOut(): Promise<void> {
   const store = await cookies();
   store.delete(SESSION_COOKIE);
+  store.delete(CSRF_COOKIE);
 }
