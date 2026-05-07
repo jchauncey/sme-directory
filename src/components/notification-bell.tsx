@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSession } from "@/lib/auth-client";
+import { csrfFetch } from "@/lib/csrf-client";
 import type {
   NotificationListResult,
   ParsedNotification,
@@ -148,7 +149,7 @@ export function NotificationBell() {
       prev.map((n) => (n.id === id && !n.readAt ? { ...n, readAt: new Date().toISOString() } : n)),
     );
     setUnreadCount((prev) => Math.max(0, prev - 1));
-    void fetch(`/api/notifications/${id}/read`, { method: "POST" }).catch(() => {});
+    void csrfFetch(`/api/notifications/${id}/read`, { method: "POST" }).catch(() => {});
   }, []);
 
   const handleMarkAllRead = useCallback(async () => {
@@ -157,7 +158,7 @@ export function NotificationBell() {
     );
     setUnreadCount(0);
     try {
-      await fetch("/api/notifications/read-all", { method: "POST" });
+      await csrfFetch("/api/notifications/read-all", { method: "POST" });
     } catch {
       // optimistic update already applied; refetch to reconcile if it failed
       void fetchNotifications();

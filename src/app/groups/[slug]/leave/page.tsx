@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CsrfInput } from "@/components/csrf-input";
 import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getGroupBySlug } from "@/lib/groups";
@@ -78,6 +79,7 @@ function SimpleLeaveCard({ slug }: { slug: string }) {
       </CardHeader>
       <CardContent>
         <form action={confirmLeaveAction.bind(null, slug)} className="flex gap-2">
+          <CsrfInput />
           <Button type="submit" variant="destructive">
             Yes, leave
           </Button>
@@ -107,6 +109,7 @@ function SoleOwnerWithSuccessorsCard({
       </CardHeader>
       <CardContent>
         <form action={confirmLeaveAction.bind(null, slug)} className="space-y-4">
+          <CsrfInput />
           <div className="space-y-1">
             <label htmlFor="successorUserId" className="block text-sm font-medium">
               New owner

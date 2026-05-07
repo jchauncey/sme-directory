@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { CsrfField } from "@/components/csrf-field";
 import { MarkdownBody } from "@/components/markdown-body";
 import { updateQuestionAction, type QuestionFormState } from "./actions";
 
@@ -33,6 +34,7 @@ export function EditQuestionForm({ questionId, title, body, canEdit }: Props) {
   if (editing) {
     return (
       <form action={formAction} className="space-y-3">
+        <CsrfField />
         <div className="space-y-1">
           <label htmlFor="edit-question-title" className="block text-sm font-medium">
             Title

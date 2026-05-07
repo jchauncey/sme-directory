@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { CSRF_HEADER, readCsrfToken } from "@/lib/csrf-client";
 
 export type PendingApplicationView = {
   userId: string;
@@ -39,7 +40,10 @@ export function PendingApplicationsList({ slug, applications }: Props) {
     try {
       const res = await fetch(`/api/groups/${slug}/membership/${userId}`, {
         method: "PATCH",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          [CSRF_HEADER]: readCsrfToken(),
+        },
         body: JSON.stringify({ status }),
       });
       if (!res.ok) {

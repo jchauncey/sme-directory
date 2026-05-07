@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { CsrfField } from "@/components/csrf-field";
 import { slugify } from "@/lib/slug";
 import { createGroupAction, type CreateGroupState } from "./actions";
 
@@ -18,6 +19,7 @@ export function NewGroupForm() {
 
   return (
     <form action={formAction} className="space-y-5">
+      <CsrfField />
       <div className="space-y-1">
         <label htmlFor="name" className="block text-sm font-medium">
           Name

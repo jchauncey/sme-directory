@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { readCsrfToken } from "@/lib/csrf-client";
 import { archiveGroupAction, unarchiveGroupAction } from "./actions";
 
 type Props = {
@@ -22,7 +23,7 @@ export function ArchiveControls({ slug, archived }: Props) {
     }
     setError(null);
     startTransition(async () => {
-      const result = await archiveGroupAction(slug);
+      const result = await archiveGroupAction(slug, readCsrfToken());
       if (result.error) setError(result.error);
     });
   };
@@ -30,7 +31,7 @@ export function ArchiveControls({ slug, archived }: Props) {
   const onUnarchive = () => {
     setError(null);
     startTransition(async () => {
-      const result = await unarchiveGroupAction(slug);
+      const result = await unarchiveGroupAction(slug, readCsrfToken());
       if (result.error) setError(result.error);
     });
   };

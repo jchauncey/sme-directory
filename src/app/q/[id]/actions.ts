@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
+import { assertCsrf, assertCsrfToken, CsrfError } from "@/lib/csrf-server";
 import {
   AuthorizationError,
   NotFoundError,
@@ -39,6 +40,12 @@ export async function createAnswerAction(
   _prev: AnswerFormState,
   formData: FormData,
 ): Promise<AnswerFormState> {
+  try {
+    await assertCsrf(formData);
+  } catch (err) {
+    if (err instanceof CsrfError) return { error: err.message };
+    throw err;
+  }
   const session = await getSession();
   if (!session) {
     return { error: "You must be signed in to post an answer." };
@@ -92,6 +99,12 @@ export async function updateAnswerAction(
   _prev: AnswerFormState,
   formData: FormData,
 ): Promise<AnswerFormState> {
+  try {
+    await assertCsrf(formData);
+  } catch (err) {
+    if (err instanceof CsrfError) return { error: err.message };
+    throw err;
+  }
   const session = await getSession();
   if (!session) {
     return { error: "You must be signed in to edit an answer." };
@@ -140,6 +153,12 @@ export async function updateQuestionAction(
   _prev: QuestionFormState,
   formData: FormData,
 ): Promise<QuestionFormState> {
+  try {
+    await assertCsrf(formData);
+  } catch (err) {
+    if (err instanceof CsrfError) return { error: err.message };
+    throw err;
+  }
   const session = await getSession();
   if (!session) {
     return { error: "You must be signed in to edit a question." };
@@ -184,7 +203,14 @@ export type ResolveQuestionResult = { error?: string; ok?: boolean };
 export async function acceptAnswerAction(
   questionId: string,
   answerId: string | null,
+  csrfToken: string,
 ): Promise<ResolveQuestionResult> {
+  try {
+    await assertCsrfToken(csrfToken);
+  } catch (err) {
+    if (err instanceof CsrfError) return { error: err.message };
+    throw err;
+  }
   const session = await getSession();
   if (!session) {
     return { error: "You must be signed in to mark a question as answered." };
@@ -213,7 +239,14 @@ export async function acceptAnswerAction(
 
 export async function reopenQuestionAction(
   questionId: string,
+  csrfToken: string,
 ): Promise<ResolveQuestionResult> {
+  try {
+    await assertCsrfToken(csrfToken);
+  } catch (err) {
+    if (err instanceof CsrfError) return { error: err.message };
+    throw err;
+  }
   const session = await getSession();
   if (!session) {
     return { error: "You must be signed in to reopen a question." };
@@ -244,7 +277,14 @@ export type DeleteQuestionResult = { error?: string; ok?: boolean };
 
 export async function deleteQuestionAction(
   questionId: string,
+  csrfToken: string,
 ): Promise<DeleteQuestionResult> {
+  try {
+    await assertCsrfToken(csrfToken);
+  } catch (err) {
+    if (err instanceof CsrfError) return { error: err.message };
+    throw err;
+  }
   const session = await getSession();
   if (!session) {
     return { error: "You must be signed in to delete a question." };
@@ -279,7 +319,14 @@ export type DeleteAnswerResult = { error?: string; ok?: boolean };
 export async function deleteAnswerAction(
   answerId: string,
   questionId: string,
+  csrfToken: string,
 ): Promise<DeleteAnswerResult> {
+  try {
+    await assertCsrfToken(csrfToken);
+  } catch (err) {
+    if (err instanceof CsrfError) return { error: err.message };
+    throw err;
+  }
   const session = await getSession();
   if (!session) {
     return { error: "You must be signed in to delete an answer." };

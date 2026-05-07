@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { csrfFetch } from "@/lib/csrf-client";
 
 const ALLOWED_MIME = ["image/png", "image/jpeg", "image/webp"];
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -39,7 +40,7 @@ export function AvatarUploadForm({ endpoint, hasImage = false, label = "Avatar" 
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch(endpoint, { method: "POST", body: form });
+      const res = await csrfFetch(endpoint, { method: "POST", body: form });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         toast.error(data.message ?? data.error ?? `Upload failed (${res.status}).`);
@@ -56,7 +57,7 @@ export function AvatarUploadForm({ endpoint, hasImage = false, label = "Avatar" 
   async function onRemove() {
     setSubmitting(true);
     try {
-      const res = await fetch(endpoint, { method: "DELETE" });
+      const res = await csrfFetch(endpoint, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         toast.error(data.message ?? data.error ?? `Remove failed (${res.status}).`);

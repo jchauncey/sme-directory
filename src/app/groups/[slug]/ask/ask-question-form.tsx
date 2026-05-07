@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { CsrfField } from "@/components/csrf-field";
 import { createQuestionAction, type AskQuestionState } from "./actions";
 
 const initialState: AskQuestionState = {};
@@ -17,6 +18,7 @@ export function AskQuestionForm({ slug }: Props) {
 
   return (
     <form action={formAction} className="space-y-5">
+      <CsrfField />
       <div className="space-y-1">
         <label htmlFor="title" className="block text-sm font-medium">
           Title

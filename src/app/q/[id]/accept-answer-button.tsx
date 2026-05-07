@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { readCsrfToken } from "@/lib/csrf-client";
 import { acceptAnswerAction } from "./actions";
 
 type Props = {
@@ -15,7 +16,7 @@ export function AcceptAnswerButton({ questionId, answerId }: Props) {
   const onClick = () => {
     setError(null);
     startTransition(async () => {
-      const result = await acceptAnswerAction(questionId, answerId);
+      const result = await acceptAnswerAction(questionId, answerId, readCsrfToken());
       if (result.error) setError(result.error);
     });
   };

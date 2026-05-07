@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
+import { CsrfField } from "@/components/csrf-field";
 import { createAnswerAction, type AnswerFormState } from "./actions";
 
 const initialState: AnswerFormState = {};
@@ -24,6 +25,7 @@ export function AnswerForm({ questionId }: Props) {
 
   return (
     <form ref={formRef} action={formAction} className="space-y-3">
+      <CsrfField />
       <div className="space-y-1">
         <label htmlFor="answer-body" className="block text-sm font-medium">
           Your answer <span className="text-zinc-500">(Markdown supported)</span>

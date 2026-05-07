@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { csrfFetch } from "@/lib/csrf-client";
 
 type MembershipShape = {
   role: "member" | "moderator" | "owner";
@@ -54,7 +55,7 @@ export function MembershipActions({ slug, isAuthenticated, currentUserId, member
   async function apply() {
     setBusy(true);
     try {
-      const res = await fetch(`/api/groups/${slug}/membership`, { method: "POST" });
+      const res = await csrfFetch(`/api/groups/${slug}/membership`, { method: "POST" });
       if (!res.ok) {
         toast.error(await readError(res));
         return;
@@ -75,7 +76,7 @@ export function MembershipActions({ slug, isAuthenticated, currentUserId, member
     if (!currentUserId) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/groups/${slug}/membership/${currentUserId}`, {
+      const res = await csrfFetch(`/api/groups/${slug}/membership/${currentUserId}`, {
         method: "DELETE",
       });
       if (!res.ok) {

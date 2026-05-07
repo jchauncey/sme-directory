@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
+import { assertCsrf, CsrfError } from "@/lib/csrf-server";
 import { updateUserProfile } from "@/lib/profile";
 import { updateMeSchema } from "@/lib/validation/users";
 
@@ -18,6 +19,12 @@ export async function updateMeAction(
   _prev: MeFormState,
   formData: FormData,
 ): Promise<MeFormState> {
+  try {
+    await assertCsrf(formData);
+  } catch (err) {
+    if (err instanceof CsrfError) return { error: err.message };
+    throw err;
+  }
   const session = await getSession();
   if (!session) {
     return { error: "You must be signed in to edit your profile." };

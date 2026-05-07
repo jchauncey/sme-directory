@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
+import { assertCsrf, CsrfError } from "@/lib/csrf-server";
 import { getGroupBySlug } from "@/lib/groups";
 import { assertApprovedMember, AuthorizationError } from "@/lib/memberships";
 import { createQuestion } from "@/lib/questions";
@@ -20,6 +21,12 @@ export async function createQuestionAction(
   _prev: AskQuestionState,
   formData: FormData,
 ): Promise<AskQuestionState> {
+  try {
+    await assertCsrf(formData);
+  } catch (err) {
+    if (err instanceof CsrfError) return { error: err.message };
+    throw err;
+  }
   const session = await getSession();
   if (!session) {
     return { error: "You must be signed in to post a question." };
