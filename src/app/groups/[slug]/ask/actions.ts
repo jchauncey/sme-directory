@@ -6,6 +6,7 @@ import { assertCsrf, CsrfError } from "@/lib/csrf-server";
 import { getGroupBySlug } from "@/lib/groups";
 import { assertApprovedMember, AuthorizationError } from "@/lib/memberships";
 import { createQuestion } from "@/lib/questions";
+import { RateLimitError, assertRateLimitForAction } from "@/lib/rate-limit";
 import { createQuestionSchema } from "@/lib/validation/questions";
 
 export type FieldError = { path: string; message: string };
@@ -30,6 +31,16 @@ export async function createQuestionAction(
   const session = await getSession();
   if (!session) {
     return { error: "You must be signed in to post a question." };
+  }
+
+  try {
+    await assertRateLimitForAction("questions");
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      const seconds = Math.max(1, Math.ceil(err.retryAfterMs / 1000));
+      return { error: `Too many questions. Try again in ${seconds} seconds.` };
+    }
+    throw err;
   }
 
   const raw = {

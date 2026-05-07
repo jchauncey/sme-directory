@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { assertCsrfToken, CsrfError } from "@/lib/csrf-server";
 import { AuthorizationError, NotFoundError } from "@/lib/memberships";
+import { RateLimitError, assertRateLimitForAction } from "@/lib/rate-limit";
 import { castVote, type VoteTargetType } from "@/lib/votes";
 
 export type VoteActionResult =
@@ -25,6 +26,19 @@ export async function voteAction(
   const session = await getSession();
   if (!session) {
     return { ok: false, error: "You must be signed in to vote." };
+  }
+
+  try {
+    await assertRateLimitForAction("votes");
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      const seconds = Math.max(1, Math.ceil(err.retryAfterMs / 1000));
+      return {
+        ok: false,
+        error: `Too many votes. Try again in ${seconds} seconds.`,
+      };
+    }
+    throw err;
   }
 
   try {

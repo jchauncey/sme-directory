@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { assertCsrfToken, CsrfError } from "@/lib/csrf-server";
 import { NotFoundError } from "@/lib/memberships";
+import { RateLimitError, assertRateLimitForAction } from "@/lib/rate-limit";
 import { toggleFavorite, type FavoriteTargetType } from "@/lib/favorites";
 
 export type FavoriteActionResult =
@@ -25,6 +26,19 @@ export async function favoriteAction(
   const session = await getSession();
   if (!session) {
     return { ok: false, error: "You must be signed in to favorite." };
+  }
+
+  try {
+    await assertRateLimitForAction("favorites");
+  } catch (err) {
+    if (err instanceof RateLimitError) {
+      const seconds = Math.max(1, Math.ceil(err.retryAfterMs / 1000));
+      return {
+        ok: false,
+        error: `Too many favorites. Try again in ${seconds} seconds.`,
+      };
+    }
+    throw err;
   }
 
   try {
