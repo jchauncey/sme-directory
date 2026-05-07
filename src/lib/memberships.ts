@@ -229,6 +229,40 @@ export async function listApprovedMembers(
   }));
 }
 
+export type ApprovedMembersPage = {
+  items: ApprovedMember[];
+  total: number;
+  page: number;
+  per: number;
+};
+
+export async function listApprovedMembersPage(
+  groupId: string,
+  opts: { page: number; per: number },
+): Promise<ApprovedMembersPage> {
+  const page = Math.max(opts.page, 1);
+  const per = Math.min(Math.max(opts.per, 1), 50);
+  const skip = (page - 1) * per;
+  const [rows, total] = await Promise.all([
+    db.membership.findMany({
+      where: { groupId, status: "approved" },
+      orderBy: { createdAt: "asc" },
+      skip,
+      take: per,
+      include: { user: { select: { id: true, name: true, email: true, image: true } } },
+    }),
+    db.membership.count({ where: { groupId, status: "approved" } }),
+  ]);
+  const items = rows.map((m) => ({
+    userId: m.user.id,
+    name: m.user.name,
+    email: m.user.email,
+    image: m.user.image,
+    role: m.role,
+  }));
+  return { items, total, page, per };
+}
+
 export async function listApprovedMemberIds(groupId: string): Promise<string[]> {
   const rows = await db.membership.findMany({
     where: { groupId, status: "approved" },

@@ -66,10 +66,21 @@ export type GroupListItem = {
 
 export type ListGroupsSort = "newest" | "members";
 
+export type GroupListPage = {
+  items: GroupListItem[];
+  total: number;
+  page: number;
+  per: number;
+};
+
 export async function listGroups(opts: {
   sort: ListGroupsSort;
   includeArchived?: boolean;
-}): Promise<GroupListItem[]> {
+  page?: number;
+  per?: number;
+}): Promise<GroupListPage> {
+  const page = Math.max(opts.page ?? 1, 1);
+  const per = Math.min(Math.max(opts.per ?? 20, 1), 50);
   const where = opts.includeArchived ? {} : { archivedAt: null };
   const [groups, counts] = await Promise.all([
     db.group.findMany({
@@ -113,7 +124,9 @@ export async function listGroups(opts: {
     items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
-  return items;
+  const total = items.length;
+  const start = (page - 1) * per;
+  return { items: items.slice(start, start + per), total, page, per };
 }
 
 export async function getGroupBySlug(slug: string): Promise<GroupWithOwner | null> {
