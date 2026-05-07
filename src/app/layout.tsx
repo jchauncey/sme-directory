@@ -36,6 +36,12 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:ring-2 focus:ring-ring focus:outline-none"
+        >
+          Skip to content
+        </a>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -44,7 +50,13 @@ export default async function RootLayout({
         >
           <SessionProvider initialSession={session}>
             <SiteHeader />
-            <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">{children}</main>
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 focus:outline-none"
+            >
+              {children}
+            </main>
             <SiteFooter />
             <Toaster />
           </SessionProvider>

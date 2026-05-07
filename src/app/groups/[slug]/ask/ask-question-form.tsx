@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { CsrfField } from "@/components/csrf-field";
+import { useFocusFirstError, useUnsavedChangesWarning } from "@/lib/forms";
 import { createQuestionAction, type AskQuestionState } from "./actions";
 
 const initialState: AskQuestionState = {};
@@ -15,9 +16,20 @@ type Props = { slug: string };
 export function AskQuestionForm({ slug }: Props) {
   const action = createQuestionAction.bind(null, slug);
   const [state, formAction, isPending] = useActionState(action, initialState);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [isDirty, setIsDirty] = useState(false);
+
+  useFocusFirstError(formRef, state.fieldErrors);
+  useUnsavedChangesWarning(isDirty && !isPending);
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form
+      ref={formRef}
+      action={formAction}
+      onChange={() => setIsDirty(true)}
+      onSubmit={() => setIsDirty(false)}
+      className="space-y-5"
+    >
       <CsrfField />
       <div className="space-y-1">
         <label htmlFor="title" className="block text-sm font-medium">
