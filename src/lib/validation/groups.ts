@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SLUG_RE, SLUG_MAX_LENGTH } from "@/lib/slug";
+import { SLUG_RE, SLUG_MIN_LENGTH, SLUG_MAX_LENGTH } from "@/lib/slug";
 
 export const groupNameSchema = z
   .string()
@@ -14,7 +14,7 @@ export const groupDescriptionSchema = z
 
 export const groupSlugSchema = z
   .string()
-  .min(2, "Slug must be at least 2 characters.")
+  .min(SLUG_MIN_LENGTH, `Slug must be at least ${SLUG_MIN_LENGTH} characters.`)
   .max(SLUG_MAX_LENGTH, `Slug must be at most ${SLUG_MAX_LENGTH} characters.`)
   .regex(SLUG_RE, "Slug must be lowercase letters, numbers, and single dashes between segments.");
 

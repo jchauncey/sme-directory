@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { CsrfField } from "@/components/csrf-field";
 import { MarkdownBody } from "@/components/markdown-body";
+import { useFocusFirstError, useUnsavedChangesWarning } from "@/lib/forms";
 import { updateQuestionAction, type QuestionFormState } from "./actions";
 
 const initialState: QuestionFormState = {};
@@ -23,17 +24,29 @@ export function EditQuestionForm({ questionId, title, body, canEdit }: Props) {
 
   const action = updateQuestionAction.bind(null, questionId);
   const [state, formAction, isPending] = useActionState(action, initialState);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [isDirty, setIsDirty] = useState(false);
+
+  useFocusFirstError(formRef, state.fieldErrors);
+  useUnsavedChangesWarning(editing && isDirty && !isPending);
 
   useEffect(() => {
     if (state.ok) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEditing(false);
+      setIsDirty(false);
     }
   }, [state.ok]);
 
   if (editing) {
     return (
-      <form action={formAction} className="space-y-3">
+      <form
+        ref={formRef}
+        action={formAction}
+        onChange={() => setIsDirty(true)}
+        onSubmit={() => setIsDirty(false)}
+        className="space-y-3"
+      >
         <CsrfField />
         <div className="space-y-1">
           <label htmlFor="edit-question-title" className="block text-sm font-medium">
@@ -93,7 +106,10 @@ export function EditQuestionForm({ questionId, title, body, canEdit }: Props) {
           </button>
           <button
             type="button"
-            onClick={() => setEditing(false)}
+            onClick={() => {
+              setEditing(false);
+              setIsDirty(false);
+            }}
             className="rounded border border-zinc-300 px-3 py-1.5 text-xs font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
           >
             Cancel
