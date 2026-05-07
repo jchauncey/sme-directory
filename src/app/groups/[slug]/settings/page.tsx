@@ -6,9 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { GroupAvatar } from "@/components/ui/group-avatar";
 import { requireAuth } from "@/lib/auth";
 import { getGroupBySlug } from "@/lib/groups";
-import { isOwner, listPendingApplications } from "@/lib/memberships";
+import {
+  isOwner,
+  isOwnerOrModerator,
+  listApprovedMembers,
+  listPendingApplications,
+} from "@/lib/memberships";
 import { ArchiveControls } from "./archive-controls";
 import { AutoApproveToggle } from "./auto-approve-toggle";
+import { MembersList, type MembersListItem } from "./members-list";
 import { PendingApplicationsList, type PendingApplicationView } from "./pending-applications-list";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -18,7 +24,8 @@ export default async function GroupSettingsPage({ params }: Props) {
   const session = await requireAuth();
   const group = await getGroupBySlug(slug);
   if (!group) notFound();
-  if (!(await isOwner(group.id, session.user.id))) notFound();
+  if (!(await isOwnerOrModerator(group.id, session.user.id))) notFound();
+  const viewerIsOwner = await isOwner(group.id, session.user.id);
 
   const pending = group.archivedAt
     ? []
@@ -31,6 +38,15 @@ export default async function GroupSettingsPage({ params }: Props) {
   }));
 
   const isArchived = group.archivedAt != null;
+
+  const members = await listApprovedMembers(group.id, 200);
+  const memberItems: MembersListItem[] = members.map((m) => ({
+    userId: m.userId,
+    name: m.name,
+    email: m.email,
+    image: m.image,
+    role: m.role,
+  }));
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 py-8">
@@ -53,50 +69,54 @@ export default async function GroupSettingsPage({ params }: Props) {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Avatar</CardTitle>
-          <CardDescription>
-            Shown on group cards, the group page, and search results. PNG, JPEG, or WebP — up to 2 MB.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isArchived ? (
-            <p className="text-sm text-muted-foreground">
-              Restore this group to change the avatar.
-            </p>
-          ) : (
-            <div className="flex items-center gap-4">
-              <GroupAvatar group={group} size="lg" />
-              <AvatarUploadForm
-                endpoint={`/api/groups/${group.slug}/avatar`}
-                hasImage={Boolean(group.image)}
-                label="Group avatar"
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {viewerIsOwner ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Avatar</CardTitle>
+            <CardDescription>
+              Shown on group cards, the group page, and search results. PNG, JPEG, or WebP — up to 2 MB.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isArchived ? (
+              <p className="text-sm text-muted-foreground">
+                Restore this group to change the avatar.
+              </p>
+            ) : (
+              <div className="flex items-center gap-4">
+                <GroupAvatar group={group} size="lg" />
+                <AvatarUploadForm
+                  endpoint={`/api/groups/${group.slug}/avatar`}
+                  hasImage={Boolean(group.image)}
+                  label="Group avatar"
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Membership</CardTitle>
-          <CardDescription>
-            {isArchived
-              ? "Archived groups are read-only. Restore the group to manage membership."
-              : "Control how new members join this group."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isArchived ? (
-            <p className="text-sm text-muted-foreground">
-              Auto-approve is currently {group.autoApprove ? "on" : "off"}.
-            </p>
-          ) : (
-            <AutoApproveToggle slug={group.slug} initial={group.autoApprove} />
-          )}
-        </CardContent>
-      </Card>
+      {viewerIsOwner ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Membership</CardTitle>
+            <CardDescription>
+              {isArchived
+                ? "Archived groups are read-only. Restore the group to manage membership."
+                : "Control how new members join this group."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isArchived ? (
+              <p className="text-sm text-muted-foreground">
+                Auto-approve is currently {group.autoApprove ? "on" : "off"}.
+              </p>
+            ) : (
+              <AutoApproveToggle slug={group.slug} initial={group.autoApprove} />
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {isArchived ? null : (
         <Card>
@@ -116,17 +136,41 @@ export default async function GroupSettingsPage({ params }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle>{isArchived ? "Restore" : "Danger zone"}</CardTitle>
+          <CardTitle>Members</CardTitle>
           <CardDescription>
             {isArchived
-              ? "Restore this group to make it read-write again. It will reappear in the default group list and search."
-              : "Archive this group to make it read-only. The page stays browsable so existing links keep working."}
+              ? "Archived groups are read-only. Restore the group to manage members."
+              : viewerIsOwner
+                ? "Promote, demote, or remove members."
+                : "Remove members from this group."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ArchiveControls slug={group.slug} archived={isArchived} />
+          <MembersList
+            slug={group.slug}
+            viewerUserId={session.user.id}
+            viewerIsOwner={viewerIsOwner}
+            archived={isArchived}
+            members={memberItems}
+          />
         </CardContent>
       </Card>
+
+      {viewerIsOwner ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{isArchived ? "Restore" : "Danger zone"}</CardTitle>
+            <CardDescription>
+              {isArchived
+                ? "Restore this group to make it read-write again. It will reappear in the default group list and search."
+                : "Archive this group to make it read-only. The page stays browsable so existing links keep working."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ArchiveControls slug={group.slug} archived={isArchived} />
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

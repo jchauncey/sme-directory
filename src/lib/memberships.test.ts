@@ -35,6 +35,7 @@ const {
   NotAMemberError,
   NotFoundError,
   removeMembership,
+  setMembershipRole,
   setMembershipStatus,
   SoleOwnerCannotLeaveError,
   transferOwnershipAndLeave,
@@ -333,7 +334,7 @@ describe("removeMembership", () => {
     expect(await getMembership(group.id, u.id)).toBeNull();
   });
 
-  it("moderator cannot remove another member", async () => {
+  it("moderator can remove another member", async () => {
     const { group } = await makeGroup(next("rm-mod"));
     const mod = await makeUser("mod");
     await db.membership.create({
@@ -341,9 +342,8 @@ describe("removeMembership", () => {
     });
     const u = await makeUser("victim");
     await applyToGroup(group.id, u.id);
-    await expect(removeMembership(group.id, u.id, mod.id)).rejects.toBeInstanceOf(
-      AuthorizationError,
-    );
+    await removeMembership(group.id, u.id, mod.id);
+    expect(await getMembership(group.id, u.id)).toBeNull();
   });
 
   it("non-owner non-mod cannot remove another", async () => {
@@ -370,6 +370,106 @@ describe("removeMembership", () => {
     await expect(removeMembership(group.id, ghost.id, owner.id)).rejects.toBeInstanceOf(
       NotFoundError,
     );
+  });
+});
+
+describe("setMembershipRole", () => {
+  it("owner can promote member to moderator", async () => {
+    const { owner, group } = await makeGroup(next("smr-promote"));
+    const u = await makeUser("promotee");
+    await db.membership.create({
+      data: { groupId: group.id, userId: u.id, role: "member", status: "approved" },
+    });
+    const updated = await setMembershipRole(group.id, u.id, "moderator", owner.id);
+    expect(updated.role).toBe("moderator");
+  });
+
+  it("owner can demote moderator to member", async () => {
+    const { owner, group } = await makeGroup(next("smr-demote"));
+    const u = await makeUser("demotee");
+    await db.membership.create({
+      data: { groupId: group.id, userId: u.id, role: "moderator", status: "approved" },
+    });
+    const updated = await setMembershipRole(group.id, u.id, "member", owner.id);
+    expect(updated.role).toBe("member");
+  });
+
+  it("moderator cannot change roles", async () => {
+    const { group } = await makeGroup(next("smr-mod-forbid"));
+    const mod = await makeUser("mod");
+    await db.membership.create({
+      data: { groupId: group.id, userId: mod.id, role: "moderator", status: "approved" },
+    });
+    const u = await makeUser("target");
+    await db.membership.create({
+      data: { groupId: group.id, userId: u.id, role: "member", status: "approved" },
+    });
+    await expect(
+      setMembershipRole(group.id, u.id, "moderator", mod.id),
+    ).rejects.toBeInstanceOf(AuthorizationError);
+  });
+
+  it("non-member cannot change roles", async () => {
+    const { group } = await makeGroup(next("smr-stranger"));
+    const stranger = await makeUser("stranger-smr");
+    const u = await makeUser("target-smr");
+    await db.membership.create({
+      data: { groupId: group.id, userId: u.id, role: "member", status: "approved" },
+    });
+    await expect(
+      setMembershipRole(group.id, u.id, "moderator", stranger.id),
+    ).rejects.toBeInstanceOf(AuthorizationError);
+  });
+
+  it("cannot change the owner's role", async () => {
+    const { owner, group } = await makeGroup(next("smr-owner"));
+    await expect(
+      setMembershipRole(group.id, owner.id, "moderator", owner.id),
+    ).rejects.toBeInstanceOf(AuthorizationError);
+  });
+
+  it("rejects when group is archived", async () => {
+    const { owner, group } = await makeGroup(next("smr-archived"));
+    const u = await makeUser("archived-target");
+    await db.membership.create({
+      data: { groupId: group.id, userId: u.id, role: "member", status: "approved" },
+    });
+    await db.group.update({
+      where: { id: group.id },
+      data: { archivedAt: new Date() },
+    });
+    await expect(
+      setMembershipRole(group.id, u.id, "moderator", owner.id),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("throws NotFoundError for a missing target membership", async () => {
+    const { owner, group } = await makeGroup(next("smr-missing"));
+    const ghost = await makeUser("ghost-smr");
+    await expect(
+      setMembershipRole(group.id, ghost.id, "moderator", owner.id),
+    ).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("rejects when target membership is not approved", async () => {
+    const { owner, group } = await makeGroup(next("smr-nonapproved"));
+    const u = await makeUser("pending-target");
+    await db.membership.create({
+      data: { groupId: group.id, userId: u.id, role: "member", status: "pending" },
+    });
+    await expect(
+      setMembershipRole(group.id, u.id, "moderator", owner.id),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("is a no-op when role is already the requested value", async () => {
+    const { owner, group } = await makeGroup(next("smr-noop"));
+    const u = await makeUser("noop-smr");
+    await db.membership.create({
+      data: { groupId: group.id, userId: u.id, role: "moderator", status: "approved" },
+    });
+    const second = await setMembershipRole(group.id, u.id, "moderator", owner.id);
+    expect(second.role).toBe("moderator");
   });
 });
 

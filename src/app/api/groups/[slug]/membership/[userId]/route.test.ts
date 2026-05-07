@@ -185,6 +185,118 @@ describe("PATCH /api/groups/[slug]/membership/[userId]", () => {
     );
     expect(res.status).toBe(403);
   });
+
+  it("owner can promote a member to moderator via role payload", async () => {
+    const setup = await setupGroupWithApplicant("promote", true);
+    cookieStore.clear();
+    await auth.signIn(setup.ownerEmail);
+    const res = await PATCH(
+      patchReq(setup.slug, setup.applicantId, { role: "moderator" }),
+      ctx(setup.slug, setup.applicantId),
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.membership.role).toBe("moderator");
+  });
+
+  it("owner can demote a moderator to member", async () => {
+    const setup = await setupGroupWithApplicant("demote", true);
+    const group = (await db.group.findUnique({ where: { slug: setup.slug } }))!;
+    await db.membership.update({
+      where: {
+        userId_groupId: { userId: setup.applicantId, groupId: group.id },
+      },
+      data: { role: "moderator" },
+    });
+    cookieStore.clear();
+    await auth.signIn(setup.ownerEmail);
+    const res = await PATCH(
+      patchReq(setup.slug, setup.applicantId, { role: "member" }),
+      ctx(setup.slug, setup.applicantId),
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.membership.role).toBe("member");
+  });
+
+  it("returns 409 when promoting a non-approved (pending) member", async () => {
+    const setup = await setupGroupWithApplicant("nonapproved-promote"); // applicant is pending
+    cookieStore.clear();
+    await auth.signIn(setup.ownerEmail);
+    const res = await PATCH(
+      patchReq(setup.slug, setup.applicantId, { role: "moderator" }),
+      ctx(setup.slug, setup.applicantId),
+    );
+    expect(res.status).toBe(409);
+  });
+
+  it("moderator cannot change roles (403)", async () => {
+    const setup = await setupGroupWithApplicant("modforbid", true);
+    const group = (await db.group.findUnique({ where: { slug: setup.slug } }))!;
+    // Make applicant a moderator.
+    await db.membership.update({
+      where: {
+        userId_groupId: { userId: setup.applicantId, groupId: group.id },
+      },
+      data: { role: "moderator" },
+    });
+    // Add a regular approved member.
+    const member = await db.user.create({
+      data: { email: `member-modforbid-${Date.now()}@example.com` },
+    });
+    await db.membership.create({
+      data: {
+        groupId: group.id,
+        userId: member.id,
+        role: "member",
+        status: "approved",
+      },
+    });
+    // Sign in as the moderator (the applicant we just promoted).
+    const moderatorEmail = (await db.user.findUnique({
+      where: { id: setup.applicantId },
+    }))!.email!;
+    cookieStore.clear();
+    await auth.signIn(moderatorEmail);
+    const res = await PATCH(
+      patchReq(setup.slug, member.id, { role: "moderator" }),
+      ctx(setup.slug, member.id),
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects role: 'owner' (400)", async () => {
+    const setup = await setupGroupWithApplicant("ownerrole", true);
+    cookieStore.clear();
+    await auth.signIn(setup.ownerEmail);
+    const res = await PATCH(
+      patchReq(setup.slug, setup.applicantId, { role: "owner" }),
+      ctx(setup.slug, setup.applicantId),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects mixed status+role payload (400)", async () => {
+    const setup = await setupGroupWithApplicant("mixed");
+    cookieStore.clear();
+    await auth.signIn(setup.ownerEmail);
+    const res = await PATCH(
+      patchReq(setup.slug, setup.applicantId, { status: "approved", role: "member" }),
+      ctx(setup.slug, setup.applicantId),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects empty payload (400)", async () => {
+    const setup = await setupGroupWithApplicant("empty");
+    cookieStore.clear();
+    await auth.signIn(setup.ownerEmail);
+    const res = await PATCH(
+      patchReq(setup.slug, setup.applicantId, {}),
+      ctx(setup.slug, setup.applicantId),
+    );
+    expect(res.status).toBe(400);
+  });
 });
 
 describe("DELETE /api/groups/[slug]/membership/[userId]", () => {
@@ -256,5 +368,55 @@ describe("DELETE /api/groups/[slug]/membership/[userId]", () => {
     });
     const res = await DELETE(deleteReq(slug, ghost.id), ctx(slug, ghost.id));
     expect(res.status).toBe(404);
+  });
+
+  it("moderator can remove a member", async () => {
+    const setup = await setupGroupWithApplicant("modkick", true);
+    const group = (await db.group.findUnique({ where: { slug: setup.slug } }))!;
+    // Promote applicant to moderator.
+    await db.membership.update({
+      where: {
+        userId_groupId: { userId: setup.applicantId, groupId: group.id },
+      },
+      data: { role: "moderator" },
+    });
+    // Create a regular member to remove.
+    const victim = await db.user.create({
+      data: { email: `victim-modkick-${Date.now()}@example.com` },
+    });
+    await db.membership.create({
+      data: {
+        groupId: group.id,
+        userId: victim.id,
+        role: "member",
+        status: "approved",
+      },
+    });
+    // Sign in as moderator.
+    const moderatorEmail = (await db.user.findUnique({
+      where: { id: setup.applicantId },
+    }))!.email!;
+    cookieStore.clear();
+    await auth.signIn(moderatorEmail);
+    const res = await DELETE(
+      deleteReq(setup.slug, victim.id),
+      ctx(setup.slug, victim.id),
+    );
+    expect(res.status).toBe(200);
+    const m = await db.membership.findUnique({
+      where: { userId_groupId: { userId: victim.id, groupId: group.id } },
+    });
+    expect(m).toBeNull();
+  });
+
+  it("owner cannot be removed (409)", async () => {
+    const setup = await setupGroupWithApplicant("ownerprot", true);
+    cookieStore.clear();
+    await auth.signIn(setup.ownerEmail);
+    const res = await DELETE(
+      deleteReq(setup.slug, setup.ownerId),
+      ctx(setup.slug, setup.ownerId),
+    );
+    expect(res.status).toBe(409);
   });
 });

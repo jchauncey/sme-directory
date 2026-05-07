@@ -150,6 +150,36 @@ export async function setMembershipStatus(
   });
 }
 
+export async function setMembershipRole(
+  groupId: string,
+  targetUserId: string,
+  newRole: "member" | "moderator",
+  actorUserId: string,
+): Promise<Membership> {
+  await assertOwner(groupId, actorUserId);
+  const group = await db.group.findUnique({
+    where: { id: groupId },
+    select: { archivedAt: true },
+  });
+  if (!group) throw new NotFoundError("Group not found.");
+  if (group.archivedAt) {
+    throw new ConflictError("This group is archived and is read-only.");
+  }
+  const target = await getMembership(groupId, targetUserId);
+  if (!target) throw new NotFoundError("Membership not found.");
+  if (target.status !== "approved") {
+    throw new ConflictError("Cannot change the role of a non-approved membership.");
+  }
+  if (target.role === "owner") {
+    throw new AuthorizationError("The group owner's role cannot be changed.");
+  }
+  if (target.role === newRole) return target;
+  return db.membership.update({
+    where: { userId_groupId: { userId: targetUserId, groupId } },
+    data: { role: newRole },
+  });
+}
+
 export async function removeMembership(
   groupId: string,
   targetUserId: string,
@@ -163,7 +193,7 @@ export async function removeMembership(
   }
 
   if (actorUserId !== targetUserId) {
-    if (!(await isOwner(groupId, actorUserId))) {
+    if (!(await isOwnerOrModerator(groupId, actorUserId))) {
       throw new AuthorizationError();
     }
   }
