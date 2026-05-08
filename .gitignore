@@ -37,6 +37,9 @@ yarn-error.log*
 /prisma/dev.db
 /prisma/dev.db-journal
 
+# Generated Postgres-flavoured schema (built from schema.prisma at test/CI time)
+/prisma/schema.postgres.prisma
+
 # Playwright e2e SQLite database, reports, and traces
 /prisma/e2e.db
 /prisma/e2e.db-journal

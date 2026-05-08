@@ -35,6 +35,33 @@ The plan in [PROJECT_PLAN.md](PROJECT_PLAN.md) is a proposal, not a decided cont
 - Issues use milestone labels (`M1-foundation`…`M6-polish`) plus surface labels (`frontend`, `backend`, `infra`). New issues should follow the same scheme.
 - Each milestone issue has explicit acceptance criteria — treat those as the definition of done; if a criterion is wrong, amend the issue rather than silently diverging.
 
+## Postgres-mode search tests
+
+Search has a dual-track abstraction (SQLite FTS5 in dev, Postgres `tsvector` in prod). The CI job `ci-search-postgres` boots a Postgres 16 service container and runs `src/lib/search.test.ts` + `src/app/api/search/route.test.ts` with `DATABASE_PROVIDER=postgres` to keep the two backends honest — same assertions, both providers. Divergence is a bug in the dual-track abstraction, not the test.
+
+- **Provider switch**: `setupTestDb()` in [test/db.ts](test/db.ts) branches on `DATABASE_PROVIDER`. SQLite path uses a per-worker `*.db` file + `prisma migrate deploy` (unchanged). Postgres path derives a per-worker schema name (`test_w<id>_..._<ts>`), runs `prisma db push --schema=prisma/schema.postgres.prisma --skip-generate` to sync it (no migrations — the FTS5 migration is SQLite-only), and drops the schema in `afterAll`.
+- **Generated schema**: `prisma/schema.postgres.prisma` is built from `prisma/schema.prisma` by [scripts/generate-postgres-schema.mjs](scripts/generate-postgres-schema.mjs) — single source of truth, only the datasource provider differs. The generated file is git-ignored; regenerate with `npm run db:gen-postgres-schema`.
+- **SQLite-only assertions**: the `toFtsMatchExpr` describe block in `search.test.ts` uses `describe.skipIf(isPostgres)` because the Postgres branch (`runTsvector`) bypasses that helper entirely.
+
+To reproduce locally:
+
+```sh
+# 1. Boot Postgres 16 (any reachable instance works)
+docker run --rm -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:16
+
+# 2. Generate the Postgres schema and Prisma client
+npm run db:gen-postgres-schema
+npx prisma generate --schema=prisma/schema.postgres.prisma
+
+# 3. Run the search suite against Postgres
+DATABASE_PROVIDER=postgres \
+  DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres \
+  npm run test -- --project node src/lib/search.test.ts src/app/api/search/route.test.ts
+
+# 4. Restore the SQLite Prisma client when done
+npx prisma generate
+```
+
 ## End-to-end tests (Playwright)
 
 Specs live in [e2e/](e2e/) and run against an isolated SQLite database (`prisma/e2e.db`) so they never touch `prisma/dev.db`. The harness boots its own dev server.

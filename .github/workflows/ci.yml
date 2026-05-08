@@ -50,3 +50,51 @@ jobs:
 
       - name: Unit tests
         run: npm run test
+
+  ci-search-postgres:
+    name: ci-search-postgres
+    needs: ci
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_PROVIDER: postgres
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      AUTH_SECRET: ci-dummy-secret-not-used-at-runtime-xx
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # See ci job for the rationale on the lockfile workaround.
+      - name: Install dependencies
+        run: |
+          rm -f package-lock.json
+          npm install --no-audit --no-fund
+
+      - name: Generate Postgres-flavoured Prisma schema
+        run: npm run db:gen-postgres-schema
+
+      - name: Generate Prisma client (Postgres)
+        run: npx prisma generate --schema=prisma/schema.postgres.prisma
+
+      - name: Validate Postgres schema
+        run: npx prisma validate --schema=prisma/schema.postgres.prisma
+
+      - name: Search tests (Postgres tsvector)
+        run: npm run test -- --project node src/lib/search.test.ts src/app/api/search/route.test.ts
