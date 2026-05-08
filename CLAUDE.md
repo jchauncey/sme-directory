@@ -34,3 +34,13 @@ The plan in [PROJECT_PLAN.md](PROJECT_PLAN.md) is a proposal, not a decided cont
 - **Never run `git commit` to close out a task** — per the user's global rule. Stage files for review or open a PR, but do not auto-commit work.
 - Issues use milestone labels (`M1-foundation`…`M6-polish`) plus surface labels (`frontend`, `backend`, `infra`). New issues should follow the same scheme.
 - Each milestone issue has explicit acceptance criteria — treat those as the definition of done; if a criterion is wrong, amend the issue rather than silently diverging.
+
+## End-to-end tests (Playwright)
+
+Specs live in [e2e/](e2e/) and run against an isolated SQLite database (`prisma/e2e.db`) so they never touch `prisma/dev.db`. The harness boots its own dev server.
+
+- **Run**: `npm run test:e2e`. First-time / CI also needs `npm run test:e2e:install` to download the chromium binary.
+- **How it works**: [e2e/global-setup.ts](e2e/global-setup.ts) wipes `prisma/e2e.db`, then runs `prisma migrate deploy` and `prisma db seed` against it. Playwright's `webServer` then starts `next dev` with `DATABASE_URL=file:./e2e.db` (configured in [playwright.config.ts](playwright.config.ts)).
+- **Adding a spec**: drop a `*.spec.ts` under `e2e/`. Prefer `getByRole` / `getByLabel` over CSS selectors. Drive flows through the UI rather than calling APIs directly so middleware, CSRF, and server actions all get exercised. Use timestamped emails / slugs (e.g. `owner-${Date.now()}@example.com`) so reruns don't collide with prior state when the DB isn't reset between runs.
+- **Two-user flows**: open a separate `browser.newContext()` per user so session cookies don't clash.
+- **Caveats**: tests run serially (`fullyParallel: false`, `workers: 1`) because the DB is shared. Reports land in `playwright-report/` and traces in `test-results/` — both gitignored.

@@ -60,7 +60,12 @@ export function PendingApplicationsList({ slug, applications }: Props) {
   return (
     <ul className="divide-y rounded-md border">
       {applications.map((a) => (
-        <li key={a.userId} className="flex items-center justify-between gap-4 p-3">
+        <li
+          key={a.userId}
+          data-testid="pending-application-row"
+          data-user-id={a.userId}
+          className="flex items-center justify-between gap-4 p-3"
+        >
           <div className="space-y-0.5">
             <p className="text-sm font-medium">{a.name ?? a.email ?? a.userId}</p>
             {a.name && a.email ? <p className="text-xs text-muted-foreground">{a.email}</p> : null}
