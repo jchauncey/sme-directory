@@ -1,9 +1,11 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import path from "node:path";
 
 export default defineConfig({
   test: {
     environment: "node",
+    // Playwright specs live under e2e/ and use @playwright/test's own runner.
+    exclude: [...configDefaults.exclude, "e2e/**"],
     server: {
       deps: {
         // Next.js synthesises `server-only` at build time. Vitest doesn't, so

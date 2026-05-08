@@ -37,6 +37,12 @@ yarn-error.log*
 /prisma/dev.db
 /prisma/dev.db-journal
 
+# Playwright e2e SQLite database, reports, and traces
+/prisma/e2e.db
+/prisma/e2e.db-journal
+/playwright-report/
+/test-results/
+
 # Uploaded avatars (local storage adapter, dev only)
 /public/uploads/
 

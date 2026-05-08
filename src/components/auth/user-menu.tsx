@@ -9,6 +9,7 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -52,14 +53,17 @@ export function UserMenu() {
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-48">
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium">{display}</span>
-            {user?.email ? (
-              <span className="text-xs text-muted-foreground">{user.email}</span>
-            ) : null}
-          </div>
-        </DropdownMenuLabel>
+        {/* Base UI requires GroupLabel to live inside a Group. */}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium">{display}</span>
+              {user?.email ? (
+                <span className="text-xs text-muted-foreground">{user.email}</span>
+              ) : null}
+            </div>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem render={<Link href="/me" />}>Your profile</DropdownMenuItem>
         <DropdownMenuItem render={<Link href="/account" />}>Account</DropdownMenuItem>
