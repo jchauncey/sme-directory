@@ -1,18 +1,14 @@
 /**
  * Memberships authorization-helper tests.
  *
- * Mirrors the real-DB pattern in db.test.ts: a throw-away SQLite file
- * initialised by `prisma migrate deploy` in beforeAll.
+ * Real-DB tests using the shared test/db.ts + test/factories.ts helpers.
  */
 
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { execSync } from "node:child_process";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+import { setupTestDb } from "@test/db";
+import { makeGroup, makeUser, uniqueId } from "@test/factories";
 
-const testDbPath = path.join(os.tmpdir(), `sme-memberships-test-${Date.now()}.db`);
-process.env["DATABASE_URL"] = `file:${testDbPath}`;
+setupTestDb("memberships");
 
 const { db } = await import("./db");
 const {
@@ -41,77 +37,28 @@ const {
   transferOwnershipAndLeave,
 } = await import("./memberships");
 
-beforeAll(async () => {
-  const root = path.resolve(import.meta.dirname, "../..");
-  execSync("node_modules/.bin/prisma migrate deploy", {
-    cwd: root,
-    env: { ...process.env, DATABASE_URL: `file:${testDbPath}` },
-    stdio: "pipe",
-  });
-  await db.$connect();
-});
-
-afterAll(async () => {
-  await db.$disconnect();
-  for (const ext of ["", "-wal", "-shm"]) {
-    try {
-      fs.unlinkSync(`${testDbPath}${ext}`);
-    } catch {
-      // ignore
-    }
-  }
-});
-
-let counter = 0;
-function next(label: string): string {
-  counter += 1;
-  return `${label}-${Date.now()}-${counter}`;
-}
-
-async function makeGroup(slugSuffix: string, opts: { autoApprove?: boolean } = {}) {
-  const owner = await db.user.create({
-    data: { email: `owner-${slugSuffix}@example.com`, name: "Owner" },
-  });
-  const group = await db.group.create({
-    data: {
-      slug: `g-${slugSuffix}`,
-      name: "G",
-      createdById: owner.id,
-      autoApprove: opts.autoApprove ?? false,
-    },
-  });
-  // Mirror createGroup's transaction: an approved owner membership.
-  await db.membership.create({
-    data: { groupId: group.id, userId: owner.id, role: "owner", status: "approved" },
-  });
-  return { owner, group };
-}
-
-async function makeUser(label: string) {
-  return db.user.create({ data: { email: `${label}-${Date.now()}-${Math.random()}@example.com` } });
-}
-
 describe("memberships helpers", () => {
   it("getMembership returns null when no row exists", async () => {
+    const ghost = await makeUser(db);
     const group = await db.group.create({
       data: {
-        slug: next("none"),
+        slug: uniqueId("none"),
         name: "G",
-        createdById: (await makeUser("ghost")).id,
+        createdById: ghost.id,
       },
     });
-    const u = await makeUser("none-u");
+    const u = await makeUser(db);
     expect(await getMembership(group.id, u.id)).toBeNull();
   });
 
   it("isOwner is true for an approved owner", async () => {
-    const { owner, group } = await makeGroup(next("ok"));
+    const { owner, group } = await makeGroup(db);
     expect(await isOwner(group.id, owner.id)).toBe(true);
   });
 
   it("isOwner is false for an approved member (non-owner role)", async () => {
-    const { group } = await makeGroup(next("memb"));
-    const u = await makeUser("m");
+    const { group } = await makeGroup(db);
+    const u = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u.id, role: "member", status: "approved" },
     });
@@ -119,14 +66,15 @@ describe("memberships helpers", () => {
   });
 
   it("isOwner is false for a pending owner (status not approved)", async () => {
+    const ghost = await makeUser(db);
     const group = await db.group.create({
       data: {
-        slug: next("pending"),
+        slug: uniqueId("pending"),
         name: "G",
-        createdById: (await makeUser("p-creator")).id,
+        createdById: ghost.id,
       },
     });
-    const u = await makeUser("p");
+    const u = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u.id, role: "owner", status: "pending" },
     });
@@ -134,26 +82,26 @@ describe("memberships helpers", () => {
   });
 
   it("assertOwner throws AuthorizationError when not an approved owner", async () => {
-    const { group } = await makeGroup(next("assert"));
-    const u = await makeUser("a");
+    const { group } = await makeGroup(db);
+    const u = await makeUser(db);
     await expect(assertOwner(group.id, u.id)).rejects.toBeInstanceOf(AuthorizationError);
   });
 
   it("assertOwner resolves silently for an approved owner", async () => {
-    const { owner, group } = await makeGroup(next("assert-ok"));
+    const { owner, group } = await makeGroup(db);
     await expect(assertOwner(group.id, owner.id)).resolves.toBeUndefined();
   });
 });
 
 describe("isOwnerOrModerator / assertOwnerOrModerator", () => {
   it("is true for approved owner", async () => {
-    const { owner, group } = await makeGroup(next("oom-owner"));
+    const { owner, group } = await makeGroup(db);
     expect(await isOwnerOrModerator(group.id, owner.id)).toBe(true);
   });
 
   it("is true for approved moderator", async () => {
-    const { group } = await makeGroup(next("oom-mod"));
-    const u = await makeUser("mod");
+    const { group } = await makeGroup(db);
+    const u = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u.id, role: "moderator", status: "approved" },
     });
@@ -161,8 +109,8 @@ describe("isOwnerOrModerator / assertOwnerOrModerator", () => {
   });
 
   it("is false for approved member", async () => {
-    const { group } = await makeGroup(next("oom-mem"));
-    const u = await makeUser("memx");
+    const { group } = await makeGroup(db);
+    const u = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u.id, role: "member", status: "approved" },
     });
@@ -170,8 +118,8 @@ describe("isOwnerOrModerator / assertOwnerOrModerator", () => {
   });
 
   it("is false for pending moderator", async () => {
-    const { group } = await makeGroup(next("oom-pm"));
-    const u = await makeUser("pm");
+    const { group } = await makeGroup(db);
+    const u = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u.id, role: "moderator", status: "pending" },
     });
@@ -179,32 +127,32 @@ describe("isOwnerOrModerator / assertOwnerOrModerator", () => {
   });
 
   it("assertOwnerOrModerator throws for a stranger", async () => {
-    const { group } = await makeGroup(next("oom-stranger"));
-    const u = await makeUser("stranger");
+    const { group } = await makeGroup(db);
+    const u = await makeUser(db);
     await expect(assertOwnerOrModerator(group.id, u.id)).rejects.toBeInstanceOf(AuthorizationError);
   });
 });
 
 describe("applyToGroup", () => {
   it("creates a pending row when autoApprove is off", async () => {
-    const { group } = await makeGroup(next("apply-off"));
-    const u = await makeUser("apply1");
+    const { group } = await makeGroup(db);
+    const u = await makeUser(db);
     const m = await applyToGroup(group.id, u.id);
     expect(m.status).toBe("pending");
     expect(m.role).toBe("member");
   });
 
   it("creates an approved row when autoApprove is on", async () => {
-    const { group } = await makeGroup(next("apply-on"), { autoApprove: true });
-    const u = await makeUser("apply2");
+    const { group } = await makeGroup(db, { autoApprove: true });
+    const u = await makeUser(db);
     const m = await applyToGroup(group.id, u.id);
     expect(m.status).toBe("approved");
     expect(m.role).toBe("member");
   });
 
   it("is idempotent for an existing approved member", async () => {
-    const { group } = await makeGroup(next("apply-idem-app"));
-    const u = await makeUser("apply3");
+    const { group } = await makeGroup(db);
+    const u = await makeUser(db);
     const first = await applyToGroup(group.id, u.id);
     await db.membership.update({
       where: { userId_groupId: { userId: u.id, groupId: group.id } },
@@ -216,8 +164,8 @@ describe("applyToGroup", () => {
   });
 
   it("returns the existing row for a pending applicant (no-op)", async () => {
-    const { group } = await makeGroup(next("apply-idem-pend"));
-    const u = await makeUser("apply4");
+    const { group } = await makeGroup(db);
+    const u = await makeUser(db);
     const first = await applyToGroup(group.id, u.id);
     const second = await applyToGroup(group.id, u.id);
     expect(second.id).toBe(first.id);
@@ -225,8 +173,8 @@ describe("applyToGroup", () => {
   });
 
   it("flips a rejected row back to pending when autoApprove is off", async () => {
-    const { group } = await makeGroup(next("apply-rej-off"));
-    const u = await makeUser("apply5");
+    const { group } = await makeGroup(db);
+    const u = await makeUser(db);
     await applyToGroup(group.id, u.id);
     await db.membership.update({
       where: { userId_groupId: { userId: u.id, groupId: group.id } },
@@ -237,8 +185,8 @@ describe("applyToGroup", () => {
   });
 
   it("flips a rejected row to approved when autoApprove is on", async () => {
-    const { group } = await makeGroup(next("apply-rej-on"), { autoApprove: true });
-    const u = await makeUser("apply6");
+    const { group } = await makeGroup(db, { autoApprove: true });
+    const u = await makeUser(db);
     await applyToGroup(group.id, u.id);
     await db.membership.update({
       where: { userId_groupId: { userId: u.id, groupId: group.id } },
@@ -249,36 +197,36 @@ describe("applyToGroup", () => {
   });
 
   it("throws NotFoundError for an unknown group", async () => {
-    const u = await makeUser("apply7");
+    const u = await makeUser(db);
     await expect(applyToGroup("does-not-exist", u.id)).rejects.toBeInstanceOf(NotFoundError);
   });
 });
 
 describe("setMembershipStatus", () => {
   it("owner can approve a pending member", async () => {
-    const { owner, group } = await makeGroup(next("smt-approve"));
-    const u = await makeUser("appr");
+    const { owner, group } = await makeGroup(db);
+    const u = await makeUser(db);
     await applyToGroup(group.id, u.id);
     const m = await setMembershipStatus(group.id, u.id, "approved", owner.id);
     expect(m.status).toBe("approved");
   });
 
   it("moderator can reject", async () => {
-    const { group } = await makeGroup(next("smt-mod"));
-    const mod = await makeUser("mod");
+    const { group } = await makeGroup(db);
+    const mod = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: mod.id, role: "moderator", status: "approved" },
     });
-    const u = await makeUser("rej");
+    const u = await makeUser(db);
     await applyToGroup(group.id, u.id);
     const m = await setMembershipStatus(group.id, u.id, "rejected", mod.id);
     expect(m.status).toBe("rejected");
   });
 
   it("non-owner non-mod cannot change status", async () => {
-    const { group } = await makeGroup(next("smt-stranger"));
-    const stranger = await makeUser("strange");
-    const u = await makeUser("target");
+    const { group } = await makeGroup(db);
+    const stranger = await makeUser(db);
+    const u = await makeUser(db);
     await applyToGroup(group.id, u.id);
     await expect(
       setMembershipStatus(group.id, u.id, "approved", stranger.id),
@@ -286,23 +234,23 @@ describe("setMembershipStatus", () => {
   });
 
   it("cannot change the owner's row", async () => {
-    const { owner, group } = await makeGroup(next("smt-owner"));
+    const { owner, group } = await makeGroup(db);
     await expect(
       setMembershipStatus(group.id, owner.id, "rejected", owner.id),
     ).rejects.toBeInstanceOf(AuthorizationError);
   });
 
   it("returns 404 for a missing target row", async () => {
-    const { owner, group } = await makeGroup(next("smt-missing"));
-    const ghost = await makeUser("ghost");
+    const { owner, group } = await makeGroup(db);
+    const ghost = await makeUser(db);
     await expect(
       setMembershipStatus(group.id, ghost.id, "approved", owner.id),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it("is a no-op when target already has the requested status", async () => {
-    const { owner, group } = await makeGroup(next("smt-noop"));
-    const u = await makeUser("noop");
+    const { owner, group } = await makeGroup(db);
+    const u = await makeUser(db);
     await applyToGroup(group.id, u.id);
     await setMembershipStatus(group.id, u.id, "approved", owner.id);
     const second = await setMembershipStatus(group.id, u.id, "approved", owner.id);
@@ -312,44 +260,44 @@ describe("setMembershipStatus", () => {
 
 describe("removeMembership", () => {
   it("member can leave themselves", async () => {
-    const { group } = await makeGroup(next("rm-leave"));
-    const u = await makeUser("leaver");
+    const { group } = await makeGroup(db);
+    const u = await makeUser(db);
     await applyToGroup(group.id, u.id);
     await removeMembership(group.id, u.id, u.id);
     expect(await getMembership(group.id, u.id)).toBeNull();
   });
 
   it("owner cannot leave their own group (409)", async () => {
-    const { owner, group } = await makeGroup(next("rm-owner-leave"));
+    const { owner, group } = await makeGroup(db);
     await expect(removeMembership(group.id, owner.id, owner.id)).rejects.toBeInstanceOf(
       ConflictError,
     );
   });
 
   it("owner can remove a member", async () => {
-    const { owner, group } = await makeGroup(next("rm-kick"));
-    const u = await makeUser("kicked");
+    const { owner, group } = await makeGroup(db);
+    const u = await makeUser(db);
     await applyToGroup(group.id, u.id);
     await removeMembership(group.id, u.id, owner.id);
     expect(await getMembership(group.id, u.id)).toBeNull();
   });
 
   it("moderator can remove another member", async () => {
-    const { group } = await makeGroup(next("rm-mod"));
-    const mod = await makeUser("mod");
+    const { group } = await makeGroup(db);
+    const mod = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: mod.id, role: "moderator", status: "approved" },
     });
-    const u = await makeUser("victim");
+    const u = await makeUser(db);
     await applyToGroup(group.id, u.id);
     await removeMembership(group.id, u.id, mod.id);
     expect(await getMembership(group.id, u.id)).toBeNull();
   });
 
   it("non-owner non-mod cannot remove another", async () => {
-    const { group } = await makeGroup(next("rm-stranger"));
-    const stranger = await makeUser("strange");
-    const u = await makeUser("victim2");
+    const { group } = await makeGroup(db);
+    const stranger = await makeUser(db);
+    const u = await makeUser(db);
     await applyToGroup(group.id, u.id);
     await expect(removeMembership(group.id, u.id, stranger.id)).rejects.toBeInstanceOf(
       AuthorizationError,
@@ -357,16 +305,16 @@ describe("removeMembership", () => {
   });
 
   it("nobody can remove the owner via DELETE (409)", async () => {
-    const { owner, group } = await makeGroup(next("rm-owner-by-other"));
-    const stranger = await makeUser("strange2");
+    const { owner, group } = await makeGroup(db);
+    const stranger = await makeUser(db);
     await expect(removeMembership(group.id, owner.id, stranger.id)).rejects.toBeInstanceOf(
       ConflictError,
     );
   });
 
   it("returns 404 for a missing target row", async () => {
-    const { owner, group } = await makeGroup(next("rm-missing"));
-    const ghost = await makeUser("ghost-rm");
+    const { owner, group } = await makeGroup(db);
+    const ghost = await makeUser(db);
     await expect(removeMembership(group.id, ghost.id, owner.id)).rejects.toBeInstanceOf(
       NotFoundError,
     );
@@ -375,8 +323,8 @@ describe("removeMembership", () => {
 
 describe("setMembershipRole", () => {
   it("owner can promote member to moderator", async () => {
-    const { owner, group } = await makeGroup(next("smr-promote"));
-    const u = await makeUser("promotee");
+    const { owner, group } = await makeGroup(db);
+    const u = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u.id, role: "member", status: "approved" },
     });
@@ -385,8 +333,8 @@ describe("setMembershipRole", () => {
   });
 
   it("owner can demote moderator to member", async () => {
-    const { owner, group } = await makeGroup(next("smr-demote"));
-    const u = await makeUser("demotee");
+    const { owner, group } = await makeGroup(db);
+    const u = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u.id, role: "moderator", status: "approved" },
     });
@@ -395,12 +343,12 @@ describe("setMembershipRole", () => {
   });
 
   it("moderator cannot change roles", async () => {
-    const { group } = await makeGroup(next("smr-mod-forbid"));
-    const mod = await makeUser("mod");
+    const { group } = await makeGroup(db);
+    const mod = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: mod.id, role: "moderator", status: "approved" },
     });
-    const u = await makeUser("target");
+    const u = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u.id, role: "member", status: "approved" },
     });
@@ -410,9 +358,9 @@ describe("setMembershipRole", () => {
   });
 
   it("non-member cannot change roles", async () => {
-    const { group } = await makeGroup(next("smr-stranger"));
-    const stranger = await makeUser("stranger-smr");
-    const u = await makeUser("target-smr");
+    const { group } = await makeGroup(db);
+    const stranger = await makeUser(db);
+    const u = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u.id, role: "member", status: "approved" },
     });
@@ -422,15 +370,15 @@ describe("setMembershipRole", () => {
   });
 
   it("cannot change the owner's role", async () => {
-    const { owner, group } = await makeGroup(next("smr-owner"));
+    const { owner, group } = await makeGroup(db);
     await expect(
       setMembershipRole(group.id, owner.id, "moderator", owner.id),
     ).rejects.toBeInstanceOf(AuthorizationError);
   });
 
   it("rejects when group is archived", async () => {
-    const { owner, group } = await makeGroup(next("smr-archived"));
-    const u = await makeUser("archived-target");
+    const { owner, group } = await makeGroup(db);
+    const u = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u.id, role: "member", status: "approved" },
     });
@@ -444,16 +392,16 @@ describe("setMembershipRole", () => {
   });
 
   it("throws NotFoundError for a missing target membership", async () => {
-    const { owner, group } = await makeGroup(next("smr-missing"));
-    const ghost = await makeUser("ghost-smr");
+    const { owner, group } = await makeGroup(db);
+    const ghost = await makeUser(db);
     await expect(
       setMembershipRole(group.id, ghost.id, "moderator", owner.id),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it("rejects when target membership is not approved", async () => {
-    const { owner, group } = await makeGroup(next("smr-nonapproved"));
-    const u = await makeUser("pending-target");
+    const { owner, group } = await makeGroup(db);
+    const u = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u.id, role: "member", status: "pending" },
     });
@@ -463,8 +411,8 @@ describe("setMembershipRole", () => {
   });
 
   it("is a no-op when role is already the requested value", async () => {
-    const { owner, group } = await makeGroup(next("smr-noop"));
-    const u = await makeUser("noop-smr");
+    const { owner, group } = await makeGroup(db);
+    const u = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u.id, role: "moderator", status: "approved" },
     });
@@ -475,10 +423,10 @@ describe("setMembershipRole", () => {
 
 describe("listPendingApplications", () => {
   it("returns only pending rows with user details", async () => {
-    const { group } = await makeGroup(next("list"));
-    const a = await makeUser("a-list");
-    const b = await makeUser("b-list");
-    const c = await makeUser("c-list");
+    const { group } = await makeGroup(db);
+    const a = await makeUser(db);
+    const b = await makeUser(db);
+    const c = await makeUser(db);
     await applyToGroup(group.id, a.id);
     await applyToGroup(group.id, b.id);
     // c is approved → should not appear
@@ -495,8 +443,8 @@ describe("listPendingApplications", () => {
 
 describe("leaveGroup", () => {
   it("removes the membership for a regular approved member", async () => {
-    const { group } = await makeGroup(next("leave-member"));
-    const user = await makeUser("leaver");
+    const { group } = await makeGroup(db);
+    const user = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: user.id, role: "member", status: "approved" },
     });
@@ -505,21 +453,21 @@ describe("leaveGroup", () => {
   });
 
   it("throws NotAMemberError when caller has no membership", async () => {
-    const { group } = await makeGroup(next("leave-none"));
-    const user = await makeUser("ghost-leave");
+    const { group } = await makeGroup(db);
+    const user = await makeUser(db);
     await expect(leaveGroup(group.id, user.id)).rejects.toBeInstanceOf(NotAMemberError);
   });
 
   it("throws SoleOwnerCannotLeaveError when caller is the only approved owner", async () => {
-    const { owner, group } = await makeGroup(next("leave-sole"));
+    const { owner, group } = await makeGroup(db);
     await expect(leaveGroup(group.id, owner.id)).rejects.toBeInstanceOf(
       SoleOwnerCannotLeaveError,
     );
   });
 
   it("allows an owner to leave when another approved owner exists", async () => {
-    const { owner, group } = await makeGroup(next("leave-coowner"));
-    const co = await makeUser("co");
+    const { owner, group } = await makeGroup(db);
+    const co = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: co.id, role: "owner", status: "approved" },
     });
@@ -531,8 +479,8 @@ describe("leaveGroup", () => {
 
 describe("transferOwnershipAndLeave", () => {
   it("promotes successor to owner and removes caller", async () => {
-    const { owner, group } = await makeGroup(next("xfer"));
-    const successor = await makeUser("succ");
+    const { owner, group } = await makeGroup(db);
+    const successor = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: successor.id, role: "member", status: "approved" },
     });
@@ -544,8 +492,8 @@ describe("transferOwnershipAndLeave", () => {
   });
 
   it("throws InvalidSuccessorError when successor is not approved", async () => {
-    const { owner, group } = await makeGroup(next("xfer-pending"));
-    const successor = await makeUser("succ");
+    const { owner, group } = await makeGroup(db);
+    const successor = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: successor.id, role: "member", status: "pending" },
     });
@@ -555,19 +503,19 @@ describe("transferOwnershipAndLeave", () => {
   });
 
   it("throws InvalidSuccessorError when successor is the same as caller", async () => {
-    const { owner, group } = await makeGroup(next("xfer-self"));
+    const { owner, group } = await makeGroup(db);
     await expect(
       transferOwnershipAndLeave(group.id, owner.id, owner.id),
     ).rejects.toBeInstanceOf(InvalidSuccessorError);
   });
 
   it("throws AuthorizationError when caller is not an approved owner", async () => {
-    const { group } = await makeGroup(next("xfer-notowner"));
-    const member = await makeUser("memb");
+    const { group } = await makeGroup(db);
+    const member = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: member.id, role: "member", status: "approved" },
     });
-    const other = await makeUser("other");
+    const other = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: other.id, role: "member", status: "approved" },
     });
@@ -577,8 +525,8 @@ describe("transferOwnershipAndLeave", () => {
   });
 
   it("does not modify state when validation fails (atomic)", async () => {
-    const { owner, group } = await makeGroup(next("xfer-atomic"));
-    const successor = await makeUser("succ");
+    const { owner, group } = await makeGroup(db);
+    const successor = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: successor.id, role: "member", status: "rejected" },
     });
@@ -596,14 +544,14 @@ describe("transferOwnershipAndLeave", () => {
 
 describe("getUserMembershipStatus / countApprovedMembers", () => {
   it("getUserMembershipStatus returns null when no membership exists", async () => {
-    const { group } = await makeGroup(next("status-none"));
-    const user = await makeUser("ghost-status");
+    const { group } = await makeGroup(db);
+    const user = await makeUser(db);
     expect(await getUserMembershipStatus(group.id, user.id)).toBeNull();
   });
 
   it("getUserMembershipStatus returns status and role", async () => {
-    const { group } = await makeGroup(next("status"));
-    const user = await makeUser("u");
+    const { group } = await makeGroup(db);
+    const user = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: user.id, role: "moderator", status: "approved" },
     });
@@ -614,10 +562,10 @@ describe("getUserMembershipStatus / countApprovedMembers", () => {
   });
 
   it("countApprovedMembers excludes pending and rejected", async () => {
-    const { group } = await makeGroup(next("count"));
-    const u1 = await makeUser("a");
-    const u2 = await makeUser("b");
-    const u3 = await makeUser("c");
+    const { group } = await makeGroup(db);
+    const u1 = await makeUser(db);
+    const u2 = await makeUser(db);
+    const u3 = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u1.id, role: "member", status: "approved" },
     });
@@ -634,12 +582,12 @@ describe("getUserMembershipStatus / countApprovedMembers", () => {
 
 describe("listApprovedMembers / listSuccessorCandidates", () => {
   it("listApprovedMembers returns approved members up to limit", async () => {
-    const { owner, group } = await makeGroup(next("list-approved"));
-    const u1 = await makeUser("a");
+    const { owner, group } = await makeGroup(db);
+    const u1 = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u1.id, role: "member", status: "approved" },
     });
-    const u2 = await makeUser("b");
+    const u2 = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u2.id, role: "member", status: "pending" },
     });
@@ -651,8 +599,8 @@ describe("listApprovedMembers / listSuccessorCandidates", () => {
   });
 
   it("listSuccessorCandidates excludes the caller", async () => {
-    const { owner, group } = await makeGroup(next("succ"));
-    const u1 = await makeUser("a");
+    const { owner, group } = await makeGroup(db);
+    const u1 = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: u1.id, role: "member", status: "approved" },
     });
@@ -663,13 +611,13 @@ describe("listApprovedMembers / listSuccessorCandidates", () => {
 
 describe("listApprovedMembersPage", () => {
   it("returns paginated slices ordered by joinedAt asc", async () => {
-    const { owner, group } = await makeGroup(next("paged-members"));
+    const { owner, group } = await makeGroup(db);
     const created: string[] = [owner.id];
     // Ensure subsequent membership createdAt timestamps are strictly after
     // the owner's (created inside makeGroup) so ordering is deterministic.
     await new Promise((r) => setTimeout(r, 5));
     for (let i = 0; i < 5; i++) {
-      const u = await makeUser(`paged-${i}`);
+      const u = await makeUser(db);
       await db.membership.create({
         data: { groupId: group.id, userId: u.id, role: "member", status: "approved" },
       });
@@ -693,16 +641,16 @@ describe("listApprovedMembersPage", () => {
   });
 
   it("excludes pending and rejected memberships from total and items", async () => {
-    const { owner, group } = await makeGroup(next("paged-filtered"));
-    const approved = await makeUser("paged-a");
+    const { owner, group } = await makeGroup(db);
+    const approved = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: approved.id, role: "member", status: "approved" },
     });
-    const pending = await makeUser("paged-p");
+    const pending = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: pending.id, role: "member", status: "pending" },
     });
-    const rejected = await makeUser("paged-r");
+    const rejected = await makeUser(db);
     await db.membership.create({
       data: { groupId: group.id, userId: rejected.id, role: "member", status: "rejected" },
     });

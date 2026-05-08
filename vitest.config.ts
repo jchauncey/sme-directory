@@ -3,6 +3,7 @@ import path from "node:path";
 
 const sharedAlias = {
   "@": path.resolve(__dirname, "src"),
+  "@test": path.resolve(__dirname, "test"),
   // Next.js synthesises `server-only` at build time. Vitest doesn't, so
   // alias it to a no-op module for tests that import server-side code.
   "server-only": path.resolve(__dirname, "test/stubs/server-only.ts"),

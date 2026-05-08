@@ -5,64 +5,21 @@
  * throw-away SQLite DB. Mirrors the auth.test.ts pattern.
  */
 
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { execSync } from "node:child_process";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { setupTestDb } from "@test/db";
+import { clearSession } from "@test/auth-mock";
 
-const testDbPath = path.join(os.tmpdir(), `sme-api-groups-test-${Date.now()}.db`);
-process.env.DATABASE_URL = `file:${testDbPath}`;
-process.env.AUTH_SECRET = "0".repeat(32) + "abcdef0123456789abcdef0123456789";
+vi.mock("next/headers", async () => (await import("@test/auth-mock")).nextHeadersMock());
+vi.mock("next/navigation", async () => (await import("@test/auth-mock")).nextNavigationMock());
 
-type Cookie = { name: string; value: string };
-const cookieStore = new Map<string, Cookie>();
-
-vi.mock("next/headers", () => ({
-  cookies: async () => ({
-    get: (name: string) => cookieStore.get(name),
-    set: (name: string, value: string) => {
-      cookieStore.set(name, { name, value });
-    },
-    delete: (name: string) => {
-      cookieStore.delete(name);
-    },
-  }),
-}));
-
-vi.mock("next/navigation", () => ({
-  redirect: (url: string) => {
-    throw new Error(`REDIRECT:${url}`);
-  },
-}));
+setupTestDb("api-groups");
 
 const auth = await import("@/lib/auth");
 const { db } = await import("@/lib/db");
 const { POST } = await import("./route");
 
-beforeAll(async () => {
-  const root = path.resolve(import.meta.dirname, "../../../..");
-  execSync("node_modules/.bin/prisma migrate deploy", {
-    cwd: root,
-    env: { ...process.env, DATABASE_URL: `file:${testDbPath}` },
-    stdio: "pipe",
-  });
-  await db.$connect();
-});
-
-afterAll(async () => {
-  await db.$disconnect();
-  for (const ext of ["", "-wal", "-shm"]) {
-    try {
-      fs.unlinkSync(`${testDbPath}${ext}`);
-    } catch {
-      // ignore
-    }
-  }
-});
-
 beforeEach(() => {
-  cookieStore.clear();
+  clearSession();
 });
 
 function makeRequest(body: unknown): Request {
