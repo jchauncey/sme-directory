@@ -1,16 +1,10 @@
 /**
- * GET /api/search route handler tests.
+ * GET /api/search route handler tests. Runs against the configured
+ * DATABASE_PROVIDER (sqlite/FTS5 by default, postgres/tsvector when set).
  */
 
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { execSync } from "node:child_process";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-
-const testDbPath = path.join(os.tmpdir(), `sme-api-search-test-${Date.now()}.db`);
-process.env.DATABASE_URL = `file:${testDbPath}`;
-process.env.AUTH_SECRET = "0".repeat(32) + "abcdef0123456789abcdef0123456789";
+import { describe, expect, it, vi } from "vitest";
+import { setupTestDb } from "@test/db";
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
@@ -26,31 +20,12 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
+setupTestDb("api-search");
+
 const { db } = await import("@/lib/db");
 const { createGroup } = await import("@/lib/groups");
 const { createQuestion } = await import("@/lib/questions");
 const { GET } = await import("./route");
-
-beforeAll(async () => {
-  const root = path.resolve(import.meta.dirname, "../../../..");
-  execSync("node_modules/.bin/prisma migrate deploy", {
-    cwd: root,
-    env: { ...process.env, DATABASE_URL: `file:${testDbPath}` },
-    stdio: "pipe",
-  });
-  await db.$connect();
-});
-
-afterAll(async () => {
-  await db.$disconnect();
-  for (const ext of ["", "-wal", "-shm"]) {
-    try {
-      fs.unlinkSync(`${testDbPath}${ext}`);
-    } catch {
-      // ignore
-    }
-  }
-});
 
 let counter = 0;
 function uniq(label: string): string {

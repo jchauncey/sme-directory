@@ -1,41 +1,20 @@
 /**
- * Search service tests — exercises FTS5 triggers, tokenizer, and scope filter.
+ * Search service tests — runs against SQLite/FTS5 by default and against
+ * Postgres/tsvector when DATABASE_PROVIDER=postgres. The integration assertions
+ * must pass on both backends; divergence is a bug in the dual-track abstraction.
  */
 
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { execSync } from "node:child_process";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+import { setupTestDb } from "@test/db";
 
-const testDbPath = path.join(os.tmpdir(), `sme-search-test-${Date.now()}.db`);
-process.env["DATABASE_URL"] = `file:${testDbPath}`;
+const handle = setupTestDb("search");
 
 const { db } = await import("./db");
 const { createGroup } = await import("./groups");
 const { createQuestion } = await import("./questions");
 const { searchContent, toFtsMatchExpr } = await import("./search");
 
-beforeAll(async () => {
-  const root = path.resolve(import.meta.dirname, "../..");
-  execSync("node_modules/.bin/prisma migrate deploy", {
-    cwd: root,
-    env: { ...process.env, DATABASE_URL: `file:${testDbPath}` },
-    stdio: "pipe",
-  });
-  await db.$connect();
-});
-
-afterAll(async () => {
-  await db.$disconnect();
-  for (const ext of ["", "-wal", "-shm"]) {
-    try {
-      fs.unlinkSync(`${testDbPath}${ext}`);
-    } catch {
-      // ignore
-    }
-  }
-});
+const isPostgres = handle.provider === "postgres";
 
 let counter = 0;
 function uniq(label: string): string {
@@ -47,7 +26,10 @@ async function makeUser(label: string) {
   return db.user.create({ data: { email: `${uniq(label)}@example.com`, name: label } });
 }
 
-describe("toFtsMatchExpr", () => {
+// toFtsMatchExpr generates SQLite FTS5 query syntax; the Postgres branch in
+// runTsvector ignores the parsed expression and feeds the raw query to
+// plainto_tsquery. Skip this block when running against Postgres.
+describe.skipIf(isPostgres)("toFtsMatchExpr", () => {
   it("returns null when the query reduces to nothing", () => {
     expect(toFtsMatchExpr("")).toBeNull();
     expect(toFtsMatchExpr("   ")).toBeNull();
