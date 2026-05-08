@@ -12,67 +12,21 @@
  * Hits a real throwaway SQLite DB for the upsert paths.
  */
 
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { execSync } from "node:child_process";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SignJWT } from "jose";
+import { setupTestDb } from "@test/db";
+import { clearSession, cookieStore } from "@test/auth-mock";
 
-// ---- env: throw-away DB + a real-shaped AUTH_SECRET ----
-const testDbPath = path.join(os.tmpdir(), `sme-auth-test-${Date.now()}.db`);
-process.env.DATABASE_URL = `file:${testDbPath}`;
-process.env.AUTH_SECRET = "0".repeat(32) + "abcdef0123456789abcdef0123456789";
+vi.mock("next/headers", async () => (await import("@test/auth-mock")).nextHeadersMock());
+vi.mock("next/navigation", async () => (await import("@test/auth-mock")).nextNavigationMock());
 
-// ---- in-memory cookie store backing next/headers ----
-type Cookie = { name: string; value: string };
-const cookieStore = new Map<string, Cookie>();
+setupTestDb("auth");
 
-vi.mock("next/headers", () => ({
-  cookies: async () => ({
-    get: (name: string) => cookieStore.get(name),
-    set: (name: string, value: string) => {
-      cookieStore.set(name, { name, value });
-    },
-    delete: (name: string) => {
-      cookieStore.delete(name);
-    },
-  }),
-}));
-
-vi.mock("next/navigation", () => ({
-  redirect: (url: string) => {
-    throw new Error(`REDIRECT:${url}`);
-  },
-}));
-
-// Imports happen AFTER env + mocks are set so the modules pick them up.
 const auth = await import("./auth");
 const { db } = await import("./db");
 
-beforeAll(async () => {
-  const root = path.resolve(import.meta.dirname, "../..");
-  execSync("node_modules/.bin/prisma migrate deploy", {
-    cwd: root,
-    env: { ...process.env, DATABASE_URL: `file:${testDbPath}` },
-    stdio: "pipe",
-  });
-  await db.$connect();
-});
-
-afterAll(async () => {
-  await db.$disconnect();
-  for (const ext of ["", "-wal", "-shm"]) {
-    try {
-      fs.unlinkSync(`${testDbPath}${ext}`);
-    } catch {
-      // ignore
-    }
-  }
-});
-
 beforeEach(() => {
-  cookieStore.clear();
+  clearSession();
 });
 
 describe("getSession", () => {
