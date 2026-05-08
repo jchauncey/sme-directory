@@ -44,3 +44,52 @@ Specs live in [e2e/](e2e/) and run against an isolated SQLite database (`prisma/
 - **Adding a spec**: drop a `*.spec.ts` under `e2e/`. Prefer `getByRole` / `getByLabel` over CSS selectors. Drive flows through the UI rather than calling APIs directly so middleware, CSRF, and server actions all get exercised. Use timestamped emails / slugs (e.g. `owner-${Date.now()}@example.com`) so reruns don't collide with prior state when the DB isn't reset between runs.
 - **Two-user flows**: open a separate `browser.newContext()` per user so session cookies don't clash.
 - **Caveats**: tests run serially (`fullyParallel: false`, `workers: 1`) because the DB is shared. Reports land in `playwright-report/` and traces in `test-results/` — both gitignored.
+
+## Component tests (Vitest + React Testing Library)
+
+Component tests run in jsdom and live alongside their components. They are configured as a separate Vitest project so the existing node-environment route and lib tests stay in node — see [vitest.config.ts](vitest.config.ts).
+
+- **Run**: `npm run test` (runs both `node` and `dom` projects). `npm run test:watch` for watch mode.
+- **File suffix**: `*.dom.test.tsx`. Anything else stays in the node project.
+- **Location**: colocate with the component (e.g. `src/components/foo.tsx` → `src/components/foo.dom.test.tsx`).
+- **Setup**: jsdom + `@testing-library/jest-dom` matchers + RTL `cleanup` are registered by [test/setup-dom.ts](test/setup-dom.ts) — no per-file imports needed beyond `@testing-library/react` and `@testing-library/user-event`.
+
+### Mocking common dependencies
+
+- `next/navigation` — hoist a shared spy so the mock and assertions point at the same function:
+  ```ts
+  const { replace } = vi.hoisted(() => ({ replace: vi.fn() }));
+  vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
+  ```
+- `@/lib/csrf-client` — stub the token reader and fetch wrapper so tests don't need a `sme_csrf` cookie:
+  ```ts
+  vi.mock("@/lib/csrf-client", () => ({
+    readCsrfToken: vi.fn(() => "test-token"),
+    csrfFetch: vi.fn(() => Promise.resolve(new Response("{}", { status: 200 }))),
+  }));
+  ```
+- `@/lib/auth-client` (`useSession`) — `vi.mock` it and set the return value per test (`mockedUseSession.mockReturnValue(...)`).
+- Server actions (e.g. `voteAction`, `favoriteAction`) — mock the local module: `vi.mock("./vote-actions", () => ({ voteAction: vi.fn() }))`.
+- `global.fetch` — `vi.stubGlobal("fetch", vi.fn(...))`; reset in `afterEach` with `vi.unstubAllGlobals()`.
+
+### Timers and debounce
+
+Two strategies depending on what you're testing:
+
+- **Debounce / typeahead** (`SearchControls`, `AuthorPicker`): keep real timers and assert with `waitFor`. Combining `userEvent` with `vi.useFakeTimers()` is fragile (we hit hangs in jsdom).
+  ```ts
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText(/search/i), "hello");
+  await waitFor(() => expect(replace).toHaveBeenCalled());
+  ```
+- **Polling intervals** (`NotificationBell`): fake only the interval timers so we can advance through poll cycles deterministically.
+  ```ts
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+  await act(async () => { vi.advanceTimersByTime(30_000); });
+  ```
+
+`NotificationBell` queues its initial fetch as a microtask (`Promise.resolve().then(...)`); flush with `await act(async () => { await Promise.resolve(); })` before asserting on rendered state.
+
+### What to test
+
+Behavior, not implementation. Good targets: optimistic UI updates, error rollback, ARIA roles/names (`aria-pressed`, `aria-label`, `role="alert"`), debounce-driven side effects (`router.replace` URL contents, fetch URLs). Avoid asserting on Tailwind class strings.
