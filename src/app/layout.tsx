@@ -35,6 +35,16 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        {/* eslint-disable @next/next/no-page-custom-font -- App Router has no pages/_document; global stylesheet load is correct here. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0&display=swap"
+        />
+        {/* eslint-enable @next/next/no-page-custom-font */}
+      </head>
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <a
           href="#main-content"

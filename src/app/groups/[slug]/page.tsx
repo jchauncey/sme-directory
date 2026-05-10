@@ -9,26 +9,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { GroupAvatar } from "@/components/ui/group-avatar";
-import { NotificationPreferencesControl } from "@/components/notification-preferences-control";
 import { Pagination } from "@/components/ui/pagination";
-import { UserAvatar } from "@/components/ui/user-avatar";
 import { getSession } from "@/lib/auth";
 import { getGroupBySlug } from "@/lib/groups";
-import {
-  countApprovedMembers,
-  getMembership,
-  listApprovedMembers,
-} from "@/lib/memberships";
+import { countApprovedMembers, getMembership } from "@/lib/memberships";
 import { getPreferenceForGroup } from "@/lib/notification-preferences";
 import { listQuestionsForGroup } from "@/lib/questions";
-import { MembershipActions } from "./membership-actions";
+import { GroupActionBar } from "./group-action-bar";
 
 type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ page?: string }>;
 };
 
-const MEMBER_PREVIEW_LIMIT = 12;
 const QUESTIONS_PER_PAGE = 20;
 
 function authorLabel(a: { name: string | null; email: string | null }): string {
@@ -43,11 +36,11 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
   const page = Math.max(Number(sp.page) || 1, 1);
 
   const session = await getSession();
-  const [memberCount, members, membership, questions] = await Promise.all([
+  const [memberCount, membership, questions, sessionMutedTypes] = await Promise.all([
     countApprovedMembers(group.id),
-    listApprovedMembers(group.id, MEMBER_PREVIEW_LIMIT),
     session ? getMembership(group.id, session.user.id) : Promise.resolve(null),
     listQuestionsForGroup(group.id, { page, per: QUESTIONS_PER_PAGE }),
+    session ? getPreferenceForGroup(session.user.id, group.id) : Promise.resolve([]),
   ]);
 
   const questionsTotalPages = Math.max(
@@ -60,8 +53,8 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
 
   const isOwner = membership?.role === "owner" && membership.status === "approved";
   const isApproved = membership?.status === "approved";
-  const mutedTypes =
-    isApproved && session ? await getPreferenceForGroup(session.user.id, group.id) : [];
+  const isPending = membership?.status === "pending";
+  const mutedTypes = isApproved ? sessionMutedTypes : [];
   const isArchived = group.archivedAt != null;
   const memberLabel = memberCount === 1 ? "1 member" : `${memberCount} members`;
 
@@ -103,18 +96,34 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
                 </CardDescription>
               </div>
             </div>
-            {isOwner ? (
-              <Button
-                variant="outline"
-                size="sm"
-                render={<Link href={`/groups/${group.slug}/settings`} />}
-              >
-                Settings
-              </Button>
-            ) : null}
+            <div className="flex items-center gap-2">
+              <GroupActionBar
+                slug={group.slug}
+                groupId={group.id}
+                groupName={group.name}
+                isAuthenticated={Boolean(session)}
+                currentUserId={session?.user.id ?? null}
+                membership={
+                  membership
+                    ? { role: membership.role, status: membership.status }
+                    : null
+                }
+                isArchived={isArchived}
+                initialMutedTypes={mutedTypes}
+              />
+              {isOwner ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  render={<Link href={`/groups/${group.slug}/settings`} />}
+                >
+                  Settings
+                </Button>
+              ) : null}
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4 pt-4">
+        <CardContent className="space-y-2 pt-4">
           {group.description ? (
             <p className="text-sm">{group.description}</p>
           ) : (
@@ -123,85 +132,11 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
           <p className="text-xs text-muted-foreground">
             Owner: {group.createdBy.name ?? group.createdBy.email}
           </p>
-          {isArchived ? null : (
-            <MembershipActions
-              slug={group.slug}
-              isAuthenticated={Boolean(session)}
-              currentUserId={session?.user.id ?? null}
-              membership={
-                membership ? { role: membership.role, status: membership.status } : null
-              }
-            />
-          )}
-          {isApproved && !isArchived ? (
-            <Button
-              variant="default"
-              size="sm"
-              render={<Link href={`/groups/${group.slug}/ask`} />}
-            >
-              Ask a question
-            </Button>
+          {isPending && !isArchived ? (
+            <p className="text-xs text-muted-foreground">Application pending review.</p>
           ) : null}
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle className="text-base">Members</CardTitle>
-          <CardDescription>
-            {memberCount === 0
-              ? "No members yet."
-              : `${memberLabel}${
-                  members.length < memberCount ? ` · showing ${members.length}` : ""
-                }`}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3 pt-2">
-          {members.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No members yet.</p>
-          ) : (
-            <ul className="space-y-2">
-              {members.map((m) => (
-                <li key={m.userId} className="flex items-center gap-3 text-sm">
-                  <UserAvatar user={m} size="sm" />
-                  <span>{m.name ?? m.email ?? "Anonymous"}</span>
-                  {m.role !== "member" ? (
-                    <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {m.role}
-                    </span>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
-          {members.length < memberCount ? (
-            <Link
-              href={`/groups/${group.slug}/members`}
-              className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-            >
-              View all members →
-            </Link>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      {isApproved ? (
-        <Card>
-          <CardHeader className="border-b">
-            <CardTitle className="text-base">Notification settings</CardTitle>
-            <CardDescription>
-              Control which {group.name} activity sends you notifications.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <NotificationPreferencesControl
-              groupId={group.id}
-              groupName={group.name}
-              initialMutedTypes={mutedTypes}
-            />
-          </CardContent>
-        </Card>
-      ) : null}
 
       <Card>
         <CardHeader className="border-b">
