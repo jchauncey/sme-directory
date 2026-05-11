@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { NotificationPreferencesControl } from "@/components/notification-preferences-control";
+import { GroupFavoriteButton } from "@/components/groups/group-favorite-button";
 import { csrfFetch } from "@/lib/csrf-client";
 import type { NotificationCategory } from "@/lib/notification-categories";
 
@@ -32,6 +33,7 @@ type Props = {
   membership: MembershipShape | null;
   isArchived: boolean;
   initialMutedTypes: NotificationCategory[];
+  initialFavorited: boolean;
 };
 
 async function readError(res: Response): Promise<string> {
@@ -52,6 +54,7 @@ export function GroupActionBar({
   membership,
   isArchived,
   initialMutedTypes,
+  initialFavorited,
 }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -148,6 +151,14 @@ export function GroupActionBar({
 
   return (
     <div className="flex items-center gap-1">
+      {isAuthenticated ? (
+        <GroupFavoriteButton
+          groupId={groupId}
+          slug={slug}
+          initialFavorited={initialFavorited}
+        />
+      ) : null}
+
       <Button
         variant="ghost"
         size="icon-sm"

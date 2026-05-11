@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 3000;
+const PORT = Number(process.env["E2E_PORT"] ?? 3000);
 const BASE_URL = `http://localhost:${PORT}`;
 
 const E2E_DATABASE_URL = "file:./e2e.db";
@@ -27,8 +27,13 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run dev",
-    url: BASE_URL,
+    command: `npm run dev -- --port ${PORT}`,
+    // Use port-based readiness instead of URL-based: polling `/` would render
+    // the home page, which opens a Prisma connection to the SQLite db — and
+    // globalSetup unlinks + recreates that file, leaving the warm connection
+    // pointed at a moved inode (SQLITE_READONLY_DBMOVED) for the rest of the
+    // run.
+    port: PORT,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {

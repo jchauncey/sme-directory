@@ -27,6 +27,7 @@ enum QuestionStatus {
 enum TargetType {
   question
   answer
+  group
 }
 
 model User {

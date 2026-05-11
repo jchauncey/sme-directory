@@ -129,6 +129,119 @@ export async function listGroups(opts: {
   return { items: items.slice(start, start + per), total, page, per };
 }
 
+// Window (in days) over which `listGroupsByActivity` measures question/answer activity.
+const ACTIVITY_WINDOW_DAYS = 30;
+
+export async function listGroupsByActivity(
+  limit: number,
+  opts: { since?: Date } = {},
+): Promise<GroupListItem[]> {
+  const since =
+    opts.since ?? new Date(Date.now() - ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+
+  const [questionAgg, answerAgg] = await Promise.all([
+    db.question.groupBy({
+      by: ["groupId"],
+      where: { deletedAt: null, createdAt: { gte: since }, group: { archivedAt: null } },
+      _count: { _all: true },
+      _max: { createdAt: true },
+    }),
+    db.answer.groupBy({
+      by: ["questionId"],
+      where: {
+        createdAt: { gte: since },
+        question: { deletedAt: null, group: { archivedAt: null } },
+      },
+      _count: { _all: true },
+      _max: { createdAt: true },
+    }),
+  ]);
+
+  // Map answer counts (keyed by questionId) up to groupId.
+  const answeredQuestionIds = answerAgg.map((a) => a.questionId);
+  const questionToGroup =
+    answeredQuestionIds.length === 0
+      ? new Map<string, string>()
+      : new Map(
+          (
+            await db.question.findMany({
+              where: { id: { in: answeredQuestionIds } },
+              select: { id: true, groupId: true },
+            })
+          ).map((q) => [q.id, q.groupId]),
+        );
+
+  type Activity = { count: number; latest: Date };
+  const byGroup = new Map<string, Activity>();
+  for (const row of questionAgg) {
+    const cur = byGroup.get(row.groupId) ?? { count: 0, latest: new Date(0) };
+    cur.count += row._count._all;
+    if (row._max.createdAt && row._max.createdAt > cur.latest) cur.latest = row._max.createdAt;
+    byGroup.set(row.groupId, cur);
+  }
+  for (const row of answerAgg) {
+    const groupId = questionToGroup.get(row.questionId);
+    if (!groupId) continue;
+    const cur = byGroup.get(groupId) ?? { count: 0, latest: new Date(0) };
+    cur.count += row._count._all;
+    if (row._max.createdAt && row._max.createdAt > cur.latest) cur.latest = row._max.createdAt;
+    byGroup.set(groupId, cur);
+  }
+
+  if (byGroup.size === 0) {
+    const page = await listGroups({ sort: "members", per: limit });
+    return page.items;
+  }
+
+  const rankedIds = [...byGroup.entries()]
+    .sort(([, a], [, b]) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return b.latest.getTime() - a.latest.getTime();
+    })
+    .slice(0, limit)
+    .map(([id]) => id);
+
+  const [groupRows, memberCounts] = await Promise.all([
+    db.group.findMany({
+      where: { id: { in: rankedIds }, archivedAt: null },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        description: true,
+        image: true,
+        archivedAt: true,
+        createdAt: true,
+      },
+    }),
+    db.membership.groupBy({
+      by: ["groupId"],
+      where: { groupId: { in: rankedIds }, status: "approved" },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const countByGroupId = new Map(memberCounts.map((c) => [c.groupId, c._count._all]));
+  const groupById = new Map(groupRows.map((g) => [g.id, g]));
+
+  const items: GroupListItem[] = [];
+  for (const id of rankedIds) {
+    const g = groupById.get(id);
+    if (!g) continue;
+    items.push({
+      id: g.id,
+      slug: g.slug,
+      name: g.name,
+      description: g.description,
+      image: g.image,
+      archivedAt: g.archivedAt,
+      createdAt: g.createdAt,
+      memberCount: countByGroupId.get(g.id) ?? 0,
+    });
+  }
+  return items;
+}
+
 export async function getGroupBySlug(slug: string): Promise<GroupWithOwner | null> {
   return db.group.findUnique({
     where: { slug },

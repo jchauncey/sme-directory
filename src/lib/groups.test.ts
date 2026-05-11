@@ -22,6 +22,7 @@ const {
   getGroupBySlug,
   getGroupBySlugOrThrow,
   listGroups,
+  listGroupsByActivity,
   unarchiveGroup,
   updateGroup,
   SlugConflictError,
@@ -304,5 +305,64 @@ describe("archiveGroup / unarchiveGroup", () => {
     await expect(assertGroupNotArchived(group.id)).resolves.toBeUndefined();
     await archiveGroup(slug, owner.id);
     await expect(assertGroupNotArchived(group.id)).rejects.toBeInstanceOf(ConflictError);
+  });
+});
+
+describe("listGroupsByActivity", () => {
+  it("ranks groups by recent question+answer count", async () => {
+    const owner = await makeUser("act-owner");
+    const slugA = `act-a-${Date.now()}`;
+    const slugB = `act-b-${Date.now()}`;
+    const slugC = `act-c-${Date.now()}`;
+    const ga = await createGroup({ name: "A", slug: slugA, autoApprove: true }, owner.id);
+    const gb = await createGroup({ name: "B", slug: slugB, autoApprove: true }, owner.id);
+    const gc = await createGroup({ name: "C", slug: slugC, autoApprove: true }, owner.id);
+
+    // A: 1 question. B: 2 questions + 1 answer (3 events). C: 0 events.
+    await db.question.create({
+      data: { groupId: ga.id, authorId: owner.id, title: "A1", body: "x" },
+    });
+    const qb1 = await db.question.create({
+      data: { groupId: gb.id, authorId: owner.id, title: "B1", body: "x" },
+    });
+    await db.question.create({
+      data: { groupId: gb.id, authorId: owner.id, title: "B2", body: "x" },
+    });
+    await db.answer.create({
+      data: { questionId: qb1.id, authorId: owner.id, body: "ans" },
+    });
+
+    const ranked = await listGroupsByActivity(5);
+    const ids = ranked.map((g) => g.id);
+    // B should rank above A; C has no activity, so it shouldn't appear.
+    expect(ids).toContain(gb.id);
+    expect(ids).toContain(ga.id);
+    expect(ids.indexOf(gb.id)).toBeLessThan(ids.indexOf(ga.id));
+    expect(ids).not.toContain(gc.id);
+  });
+
+  it("excludes archived groups even if they have activity", async () => {
+    const owner = await makeUser("act-arch-owner");
+    const slug = `act-arch-${Date.now()}`;
+    const group = await createGroup({ name: "Arch", slug, autoApprove: true }, owner.id);
+    await db.question.create({
+      data: { groupId: group.id, authorId: owner.id, title: "Q", body: "x" },
+    });
+    await archiveGroup(slug, owner.id);
+
+    const ranked = await listGroupsByActivity(5);
+    expect(ranked.find((g) => g.id === group.id)).toBeUndefined();
+  });
+
+  it("falls back to member-count sort when no group has activity in the window", async () => {
+    const owner = await makeUser("act-fallback");
+    const slug = `act-fb-${Date.now()}`;
+    const group = await createGroup({ name: "FB", slug, autoApprove: true }, owner.id);
+    // Force the fallback path by setting `since` to the future — no activity
+    // anywhere in the DB can satisfy `createdAt >= since`.
+    const ranked = await listGroupsByActivity(50, { since: new Date(Date.now() + 60_000) });
+    const ids = ranked.map((g) => g.id);
+    expect(ids).toContain(group.id);
+    expect(ranked.every((g) => typeof g.memberCount === "number")).toBe(true);
   });
 });

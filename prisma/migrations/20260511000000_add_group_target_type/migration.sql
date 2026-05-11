@@ -1,0 +1,16 @@
+-- Add "group" as a valid TargetType for Vote and Favorite.
+--
+-- SQLite stores Prisma enums as plain TEXT with no CHECK constraint on the
+-- existing Vote/Favorite tables (see 20260430172732_init/migration.sql), so
+-- widening the Prisma enum requires no schema change here — this migration
+-- exists purely to record the schema version. On Postgres, the test path uses
+-- `prisma db push` against the generated postgres schema and never replays
+-- this file.
+--
+-- PROD POSTGRES BOOTSTRAP RISK: when production switches to Postgres and is
+-- bootstrapped with `prisma migrate deploy` (not `db push`), this empty file
+-- will NOT widen the Postgres `TargetType` enum, and `Favorite` inserts with
+-- `targetType = 'group'` will fail. Before that switch lands, add a real
+-- Postgres-only step (`ALTER TYPE "TargetType" ADD VALUE 'group'`) to a
+-- Postgres-specific migration path, or fold this into the first Postgres
+-- baseline migration.

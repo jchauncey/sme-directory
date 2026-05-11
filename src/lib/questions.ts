@@ -90,6 +90,46 @@ export async function updateQuestion(
   });
 }
 
+export type OpenQuestionListItem = QuestionListItem & {
+  group: { id: string; slug: string; name: string };
+};
+
+export async function listRecentOpenQuestionsAcrossGroups(
+  limit: number,
+): Promise<OpenQuestionListItem[]> {
+  const rows = await db.question.findMany({
+    where: {
+      status: "open",
+      deletedAt: null,
+      group: { archivedAt: null },
+    },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: {
+      author: { select: { id: true, email: true, name: true, image: true } },
+      group: { select: { id: true, slug: true, name: true } },
+      _count: { select: { answers: true } },
+    },
+  });
+
+  const scores = await voteScoresFor(
+    "question",
+    rows.map((r) => r.id),
+  );
+
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    status: r.status,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    author: r.author,
+    answerCount: r._count.answers,
+    voteScore: scores.get(r.id) ?? 0,
+    group: r.group,
+  }));
+}
+
 export async function listQuestionsForGroup(
   groupId: string,
   opts: { page: number; per: number },
