@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GroupCard } from "@/components/groups/group-card";
 import { requireAuth } from "@/lib/auth";
-import { listFavoritesForUser } from "@/lib/favorites";
+import { listFavoriteGroupsForUser, listFavoritesForUser } from "@/lib/favorites";
 
 function authorLabel(a: { name: string | null; email: string | null }): string {
   return a.name ?? a.email ?? "unknown";
@@ -15,9 +16,12 @@ function excerpt(body: string, max = 200): string {
 
 export default async function MyFavoritesPage() {
   const session = await requireAuth();
-  const { questions, answers } = await listFavoritesForUser(session.user.id);
+  const [{ questions, answers }, groups] = await Promise.all([
+    listFavoritesForUser(session.user.id),
+    listFavoriteGroupsForUser(session.user.id),
+  ]);
 
-  const empty = questions.length === 0 && answers.length === 0;
+  const empty = questions.length === 0 && answers.length === 0 && groups.length === 0;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 py-8">
@@ -30,9 +34,20 @@ export default async function MyFavoritesPage() {
 
       {empty ? (
         <p className="text-sm text-muted-foreground">
-          You haven&rsquo;t favorited anything yet. Open a question and tap the star
-          to save it here.
+          You haven&rsquo;t favorited anything yet. Open a question or group and
+          tap the star to save it here.
         </p>
+      ) : null}
+
+      {groups.length > 0 ? (
+        <section className="space-y-2">
+          <h2 className="text-lg font-medium">Groups ({groups.length})</h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {groups.map((g) => (
+              <GroupCard key={g.id} group={g} />
+            ))}
+          </div>
+        </section>
       ) : null}
 
       {questions.length > 0 ? (

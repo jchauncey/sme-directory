@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const favoriteTargetTypeSchema = z.enum(["question", "answer"]);
+export const favoriteTargetTypeSchema = z.enum(["question", "answer", "group"]);
 
 export const favoriteInputSchema = z.object({
   targetType: favoriteTargetTypeSchema,

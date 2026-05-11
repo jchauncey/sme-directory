@@ -20,6 +20,7 @@ const {
   toggleFavorite,
   viewerFavoritesFor,
   listFavoritesForUser,
+  listFavoriteGroupsForUser,
 } = await import("./favorites");
 
 beforeAll(async () => {
@@ -275,5 +276,123 @@ describe("listFavoritesForUser", () => {
     const result = await listFavoritesForUser(user.id);
     expect(result.questions).toHaveLength(0);
     expect(result.answers).toHaveLength(0);
+  });
+
+  it("does not surface group favorites in the questions/answers lists", async () => {
+    const owner = await makeUser("g-owner-skip");
+    const group = await createGroup(
+      { name: "G", slug: uniq("g-skip"), autoApprove: true },
+      owner.id,
+    );
+    const user = await makeUser("g-fav-skip");
+    await toggleFavorite({ targetType: "group", targetId: group.id }, user.id);
+
+    const result = await listFavoritesForUser(user.id);
+    expect(result.questions).toHaveLength(0);
+    expect(result.answers).toHaveLength(0);
+  });
+});
+
+describe("toggleFavorite on groups", () => {
+  it("creates a favorite on a group", async () => {
+    const owner = await makeUser("g-owner");
+    const group = await createGroup(
+      { name: "G", slug: uniq("g"), autoApprove: true },
+      owner.id,
+    );
+    const user = await makeUser("g-fav");
+
+    const result = await toggleFavorite(
+      { targetType: "group", targetId: group.id },
+      user.id,
+    );
+
+    expect(result.favorited).toBe(true);
+    expect(result.targetType).toBe("group");
+    expect(result.targetId).toBe(group.id);
+
+    const stored = await db.favorite.findUnique({
+      where: {
+        userId_targetType_targetId: {
+          userId: user.id,
+          targetType: "group",
+          targetId: group.id,
+        },
+      },
+    });
+    expect(stored).not.toBeNull();
+  });
+
+  it("toggles off on second call", async () => {
+    const owner = await makeUser("g-owner-2");
+    const group = await createGroup(
+      { name: "G2", slug: uniq("g2"), autoApprove: true },
+      owner.id,
+    );
+    const user = await makeUser("g-fav-2");
+    await toggleFavorite({ targetType: "group", targetId: group.id }, user.id);
+    const second = await toggleFavorite(
+      { targetType: "group", targetId: group.id },
+      user.id,
+    );
+    expect(second.favorited).toBe(false);
+  });
+
+  it("throws NotFoundError for unknown group id", async () => {
+    const user = await makeUser("g-nf");
+    await expect(
+      toggleFavorite({ targetType: "group", targetId: "does-not-exist" }, user.id),
+    ).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
+
+describe("listFavoriteGroupsForUser", () => {
+  it("returns favorited groups newest-first with hydrated member counts", async () => {
+    const owner = await makeUser("lfg-owner");
+    const g1 = await createGroup(
+      { name: "First", slug: uniq("g-first"), autoApprove: true },
+      owner.id,
+    );
+    const g2 = await createGroup(
+      { name: "Second", slug: uniq("g-second"), autoApprove: true },
+      owner.id,
+    );
+    // Add an extra approved member to g1 so memberCount > 1.
+    const extra = await makeUser("lfg-extra");
+    await db.membership.create({
+      data: { groupId: g1.id, userId: extra.id, status: "approved" },
+    });
+
+    const user = await makeUser("lfg-user");
+    await toggleFavorite({ targetType: "group", targetId: g1.id }, user.id);
+    await new Promise((r) => setTimeout(r, 5));
+    await toggleFavorite({ targetType: "group", targetId: g2.id }, user.id);
+
+    const result = await listFavoriteGroupsForUser(user.id);
+    expect(result.map((r) => r.id)).toEqual([g2.id, g1.id]);
+    const first = result.find((r) => r.id === g1.id);
+    expect(first?.memberCount).toBe(2); // owner + extra
+    const second = result.find((r) => r.id === g2.id);
+    expect(second?.memberCount).toBe(1);
+  });
+
+  it("respects limit", async () => {
+    const owner = await makeUser("lfg-lim-owner");
+    const user = await makeUser("lfg-lim-user");
+    for (let i = 0; i < 3; i++) {
+      const g = await createGroup(
+        { name: `Lim${i}`, slug: uniq("g-lim"), autoApprove: true },
+        owner.id,
+      );
+      await toggleFavorite({ targetType: "group", targetId: g.id }, user.id);
+    }
+    const result = await listFavoriteGroupsForUser(user.id, 2);
+    expect(result).toHaveLength(2);
+  });
+
+  it("returns empty when user has no group favorites", async () => {
+    const user = await makeUser("lfg-empty");
+    const result = await listFavoriteGroupsForUser(user.id);
+    expect(result).toEqual([]);
   });
 });

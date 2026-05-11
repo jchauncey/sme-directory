@@ -30,6 +30,18 @@ export type FavoritedAnswer = {
   question: { id: string; title: string };
 };
 
+export type FavoritedGroup = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  image: string | null;
+  memberCount: number;
+  archivedAt: Date | null;
+  createdAt: Date;
+  favoritedAt: Date;
+};
+
 export type FavoritesForUser = {
   questions: FavoritedQuestion[];
   answers: FavoritedAnswer[];
@@ -60,11 +72,20 @@ async function assertTargetExists(
     if (!q || q.deletedAt) throw new NotFoundError("Question not found.");
     return;
   }
-  const a = await db.answer.findUnique({
+  if (targetType === "answer") {
+    const a = await db.answer.findUnique({
+      where: { id: targetId },
+      select: { id: true, question: { select: { deletedAt: true } } },
+    });
+    if (!a || a.question.deletedAt) throw new NotFoundError("Answer not found.");
+    return;
+  }
+  // targetType === "group"
+  const g = await db.group.findUnique({
     where: { id: targetId },
-    select: { id: true, question: { select: { deletedAt: true } } },
+    select: { id: true },
   });
-  if (!a || a.question.deletedAt) throw new NotFoundError("Answer not found.");
+  if (!g) throw new NotFoundError("Group not found.");
 }
 
 export async function toggleFavorite(
@@ -139,7 +160,7 @@ export async function listFavoritesForUser(
   for (const r of rows) {
     favoritedAt.set(`${r.targetType}:${r.targetId}`, r.createdAt);
     if (r.targetType === "question") questionIds.push(r.targetId);
-    else answerIds.push(r.targetId);
+    else if (r.targetType === "answer") answerIds.push(r.targetId);
   }
 
   const [questionRows, answerRows] = await Promise.all([
@@ -184,7 +205,7 @@ export async function listFavoritesForUser(
         author: q.author,
         group: q.group,
       });
-    } else {
+    } else if (r.targetType === "answer") {
       const a = answersById.get(r.targetId);
       if (!a) continue;
       answers.push({
@@ -199,4 +220,62 @@ export async function listFavoritesForUser(
   }
 
   return { questions, answers };
+}
+
+// Archived groups are intentionally returned: the user starred them, so we keep
+// them visible (with the archived badge from GroupCard) so they can find and
+// unfavorite them.
+export async function listFavoriteGroupsForUser(
+  userId: string,
+  limit?: number,
+): Promise<FavoritedGroup[]> {
+  const favRows = await db.favorite.findMany({
+    where: { userId, targetType: "group" },
+    orderBy: { createdAt: "desc" },
+    select: { targetId: true, createdAt: true },
+    ...(limit ? { take: limit } : {}),
+  });
+  if (favRows.length === 0) return [];
+
+  const groupIds = favRows.map((r) => r.targetId);
+  const [groupRows, memberCounts] = await Promise.all([
+    db.group.findMany({
+      where: { id: { in: groupIds } },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        description: true,
+        image: true,
+        archivedAt: true,
+        createdAt: true,
+      },
+    }),
+    db.membership.groupBy({
+      by: ["groupId"],
+      where: { groupId: { in: groupIds }, status: "approved" },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const countById = new Map(memberCounts.map((c) => [c.groupId, c._count._all]));
+  const groupById = new Map(groupRows.map((g) => [g.id, g]));
+
+  const out: FavoritedGroup[] = [];
+  for (const r of favRows) {
+    const g = groupById.get(r.targetId);
+    if (!g) continue;
+    out.push({
+      id: g.id,
+      slug: g.slug,
+      name: g.name,
+      description: g.description,
+      image: g.image,
+      archivedAt: g.archivedAt,
+      createdAt: g.createdAt,
+      memberCount: countById.get(g.id) ?? 0,
+      favoritedAt: r.createdAt,
+    });
+  }
+  return out;
 }

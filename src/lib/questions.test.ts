@@ -15,12 +15,13 @@ const testDbPath = path.join(os.tmpdir(), `sme-questions-test-${Date.now()}.db`)
 process.env["DATABASE_URL"] = `file:${testDbPath}`;
 
 const { db } = await import("./db");
-const { createGroup } = await import("./groups");
+const { archiveGroup, createGroup } = await import("./groups");
 const { NotFoundError } = await import("./memberships");
 const {
   createQuestion,
   getQuestionById,
   listQuestionsForGroup,
+  listRecentOpenQuestionsAcrossGroups,
   softDeleteQuestion,
   acceptAnswer,
   reopenQuestion,
@@ -436,5 +437,94 @@ describe("acceptAnswer / reopenQuestion on deleted questions", () => {
     await expect(reopenQuestion(q.id, owner.id)).rejects.toBeInstanceOf(
       NotFoundError,
     );
+  });
+});
+
+describe("listRecentOpenQuestionsAcrossGroups", () => {
+  it("returns only open, non-deleted questions whose group is not archived, newest first", async () => {
+    const owner = await makeUser("lroq-owner");
+    const groupA = await createGroup(
+      { name: "A", slug: uniq("lroq-a"), autoApprove: true },
+      owner.id,
+    );
+    const groupB = await createGroup(
+      { name: "B", slug: uniq("lroq-b"), autoApprove: true },
+      owner.id,
+    );
+
+    // Open question in A (oldest)
+    const qOpenA = await createQuestion(
+      { title: "Open A", body: "body" },
+      groupA.id,
+      owner.id,
+    );
+    // Open question in B (newer)
+    await new Promise((r) => setTimeout(r, 10));
+    const qOpenB = await createQuestion(
+      { title: "Open B", body: "body" },
+      groupB.id,
+      owner.id,
+    );
+    // Answered question in A
+    await new Promise((r) => setTimeout(r, 10));
+    const qAnsweredA = await createQuestion(
+      { title: "Answered A", body: "body" },
+      groupA.id,
+      owner.id,
+    );
+    const ans = await db.answer.create({
+      data: { questionId: qAnsweredA.id, authorId: owner.id, body: "ans" },
+    });
+    await acceptAnswer(qAnsweredA.id, ans.id, owner.id);
+    // Deleted open question
+    const qDeletedA = await createQuestion(
+      { title: "Deleted A", body: "body" },
+      groupA.id,
+      owner.id,
+    );
+    await softDeleteQuestion(qDeletedA.id, owner.id);
+
+    const list = await listRecentOpenQuestionsAcrossGroups(10);
+    const ids = list.map((q) => q.id);
+    expect(ids).toContain(qOpenA.id);
+    expect(ids).toContain(qOpenB.id);
+    expect(ids).not.toContain(qAnsweredA.id);
+    expect(ids).not.toContain(qDeletedA.id);
+    // Newest first: qOpenB before qOpenA.
+    expect(ids.indexOf(qOpenB.id)).toBeLessThan(ids.indexOf(qOpenA.id));
+    // Group info hydrated.
+    const found = list.find((q) => q.id === qOpenA.id);
+    expect(found?.group.slug).toBe(groupA.slug);
+  });
+
+  it("excludes questions from archived groups", async () => {
+    const owner = await makeUser("lroq-arch");
+    const slug = uniq("lroq-arch-g");
+    const group = await createGroup({ name: "Arch", slug, autoApprove: true }, owner.id);
+    const q = await createQuestion(
+      { title: "Pre-archive", body: "x" },
+      group.id,
+      owner.id,
+    );
+    await archiveGroup(slug, owner.id);
+    const list = await listRecentOpenQuestionsAcrossGroups(50);
+    expect(list.find((it) => it.id === q.id)).toBeUndefined();
+  });
+
+  it("respects limit", async () => {
+    const owner = await makeUser("lroq-lim");
+    const group = await createGroup(
+      { name: "Lim", slug: uniq("lroq-lim-g"), autoApprove: true },
+      owner.id,
+    );
+    for (let i = 0; i < 3; i++) {
+      await createQuestion(
+        { title: `Limited ${i}`, body: "x" },
+        group.id,
+        owner.id,
+      );
+    }
+    const list = await listRecentOpenQuestionsAcrossGroups(2);
+    expect(list.length).toBeLessThanOrEqual(2);
   });
 });

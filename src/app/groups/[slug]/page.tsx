@@ -11,6 +11,7 @@ import {
 import { GroupAvatar } from "@/components/ui/group-avatar";
 import { Pagination } from "@/components/ui/pagination";
 import { getSession } from "@/lib/auth";
+import { viewerFavoritesFor } from "@/lib/favorites";
 import { getGroupBySlug } from "@/lib/groups";
 import { countApprovedMembers, getMembership } from "@/lib/memberships";
 import { getPreferenceForGroup } from "@/lib/notification-preferences";
@@ -36,12 +37,16 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
   const page = Math.max(Number(sp.page) || 1, 1);
 
   const session = await getSession();
-  const [memberCount, membership, questions, sessionMutedTypes] = await Promise.all([
-    countApprovedMembers(group.id),
-    session ? getMembership(group.id, session.user.id) : Promise.resolve(null),
-    listQuestionsForGroup(group.id, { page, per: QUESTIONS_PER_PAGE }),
-    session ? getPreferenceForGroup(session.user.id, group.id) : Promise.resolve([]),
-  ]);
+  const [memberCount, membership, questions, sessionMutedTypes, viewerFavoritedGroups] =
+    await Promise.all([
+      countApprovedMembers(group.id),
+      session ? getMembership(group.id, session.user.id) : Promise.resolve(null),
+      listQuestionsForGroup(group.id, { page, per: QUESTIONS_PER_PAGE }),
+      session ? getPreferenceForGroup(session.user.id, group.id) : Promise.resolve([]),
+      session
+        ? viewerFavoritesFor("group", [group.id], session.user.id)
+        : Promise.resolve(new Set<string>()),
+    ]);
 
   const questionsTotalPages = Math.max(
     Math.ceil(questions.total / QUESTIONS_PER_PAGE),
@@ -110,6 +115,7 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
                 }
                 isArchived={isArchived}
                 initialMutedTypes={mutedTypes}
+                initialFavorited={viewerFavoritedGroups.has(group.id)}
               />
               {isOwner ? (
                 <Button
