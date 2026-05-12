@@ -59,13 +59,13 @@ function renderNotification(n: ClientNotification): RenderedNotification {
       };
     case "membership.approved":
       return {
-        href: "/me/applications",
+        href: "/me/groups",
         title: `Approved to join ${n.payload.groupName}`,
         subtitle: `${n.payload.actorName ?? "A moderator"} approved your application`,
       };
     case "membership.rejected":
       return {
-        href: "/me/applications",
+        href: "/me/groups",
         title: `Application to ${n.payload.groupName} declined`,
         subtitle: `${n.payload.actorName ?? "A moderator"} declined your application`,
       };

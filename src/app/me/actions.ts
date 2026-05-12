@@ -55,6 +55,7 @@ export async function updateMeAction(
   }
 
   revalidatePath("/me");
+  revalidatePath("/me/settings");
   revalidatePath(`/u/${session.user.id}`);
   return { ok: true };
 }

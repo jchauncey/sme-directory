@@ -85,6 +85,16 @@ function excerpt(body: string): string {
   return `${body.slice(0, EXCERPT_LENGTH)}…`;
 }
 
+export async function countQuestionsByAuthor(userId: string): Promise<number> {
+  return db.question.count({ where: { authorId: userId, deletedAt: null } });
+}
+
+export async function countAnswersByAuthor(userId: string): Promise<number> {
+  return db.answer.count({
+    where: { authorId: userId, question: { deletedAt: null } },
+  });
+}
+
 export async function listQuestionsByAuthor(
   userId: string,
   opts: { page: number; per: number },
@@ -201,9 +211,13 @@ export async function listGroupsForUser(
 
 export async function listFavoritesByUser(
   userId: string,
+  opts: { kind?: "question" | "answer" } = {},
 ): Promise<ProfileFavoriteItem[]> {
+  const targetTypes: Array<"question" | "answer"> = opts.kind
+    ? [opts.kind]
+    : ["question", "answer"];
   const favorites = await db.favorite.findMany({
-    where: { userId },
+    where: { userId, targetType: { in: targetTypes } },
     orderBy: { createdAt: "desc" },
   });
   if (favorites.length === 0) return [];

@@ -48,7 +48,7 @@ export default async function Home() {
         title="Your favorite groups"
         link={
           showAllFavoritesLink
-            ? { href: "/me/favorites", label: "See all favorites →" }
+            ? { href: "/me/favorites/groups", label: "See all favorites →" }
             : undefined
         }
       >

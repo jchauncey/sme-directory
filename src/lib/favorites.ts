@@ -279,3 +279,11 @@ export async function listFavoriteGroupsForUser(
   }
   return out;
 }
+
+export async function countFavoriteGroupsForUser(
+  userId: string,
+): Promise<number> {
+  return db.favorite.count({
+    where: { userId, targetType: "group" },
+  });
+}
