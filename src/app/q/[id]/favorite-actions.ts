@@ -44,7 +44,12 @@ export async function favoriteAction(
   try {
     const result = await toggleFavorite({ targetType, targetId }, session.user.id);
     revalidatePath(`/q/${questionId}`);
-    revalidatePath("/me/favorites");
+    revalidatePath("/me");
+    revalidatePath(
+      targetType === "answer"
+        ? "/me/favorites/answers"
+        : "/me/favorites/questions",
+    );
     return { ok: true, favorited: result.favorited };
   } catch (err) {
     if (err instanceof NotFoundError) {

@@ -21,7 +21,7 @@ export default async function AccountPage() {
         <dd>{session.user.name ?? "—"}</dd>
       </dl>
       <nav className="text-sm">
-        <Link href="/me/favorites" className="underline">
+        <Link href="/me/favorites/questions" className="underline">
           My favorites
         </Link>
       </nav>

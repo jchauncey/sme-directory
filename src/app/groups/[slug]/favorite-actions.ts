@@ -47,7 +47,8 @@ export async function favoriteGroupAction(
     );
     revalidatePath(`/groups/${slug}`);
     revalidatePath("/");
-    revalidatePath("/me/favorites");
+    revalidatePath("/me");
+    revalidatePath("/me/favorites/groups");
     return { ok: true, favorited: result.favorited };
   } catch (err) {
     if (err instanceof NotFoundError) {

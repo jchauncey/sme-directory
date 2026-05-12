@@ -82,13 +82,13 @@ function descriptionFor(n: ParsedNotification): { headline: string; subline: str
       return {
         headline: `Approved to join ${n.payload.groupName}`,
         subline: `${n.payload.actorName ?? "A moderator"} approved your application`,
-        href: "/me/applications",
+        href: "/me/groups",
       };
     case "membership.rejected":
       return {
         headline: `Application to ${n.payload.groupName} declined`,
         subline: `${n.payload.actorName ?? "A moderator"} declined your application`,
-        href: "/me/applications",
+        href: "/me/groups",
       };
   }
 }
@@ -148,8 +148,8 @@ export default async function NotificationsPage({ searchParams }: Props) {
         <h1 className="text-2xl font-semibold tracking-tight">Notifications</h1>
         <p className="text-sm text-muted-foreground">
           Full history. Filter by type or read state, and mute groups from{" "}
-          <Link href="/me" className="underline">
-            your profile
+          <Link href="/me/notification-settings" className="underline">
+            notification settings
           </Link>
           .
         </p>

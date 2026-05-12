@@ -65,11 +65,6 @@ test("home dashboard surfaces favorited groups and recent open questions", async
   await page.goto("/");
   await expect(favorites.getByRole("link", { name: groupName })).toBeVisible();
 
-  // …and on /me/favorites under the Groups section.
-  await page.goto("/me/favorites");
-  await expect(page.getByRole("heading", { name: /^Groups \(\d+\)$/ })).toBeVisible();
-  await expect(page.getByRole("link", { name: groupName })).toBeVisible();
-
   // Unfavorite — the preview returns to the empty state.
   await page.goto(`/groups/${expectedSlug}`);
   await page.getByRole("button", { name: "Remove from favorites" }).click();
