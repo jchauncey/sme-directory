@@ -1,13 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GroupAvatar } from "@/components/ui/group-avatar";
 import { MaterialIcon } from "@/components/ui/material-icon";
 import { Pagination } from "@/components/ui/pagination";
@@ -49,10 +43,7 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
         : Promise.resolve(new Set<string>()),
     ]);
 
-  const questionsTotalPages = Math.max(
-    Math.ceil(questions.total / QUESTIONS_PER_PAGE),
-    1,
-  );
+  const questionsTotalPages = Math.max(Math.ceil(questions.total / QUESTIONS_PER_PAGE), 1);
 
   const buildQuestionsHref = (p: number): string =>
     p > 1 ? `/groups/${group.slug}?page=${p}` : `/groups/${group.slug}`;
@@ -70,9 +61,8 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
       {isArchived ? (
         <Card className="border-amber-300 bg-amber-50 dark:border-amber-700/60 dark:bg-amber-900/20">
           <CardContent className="py-3 text-sm">
-            <strong>This group is archived.</strong>{" "}
-            It is read-only — no new questions, answers, votes, or applications. Existing
-            content remains visible.
+            <strong>This group is archived.</strong> It is read-only — no new questions, answers,
+            votes, or applications. Existing content remains visible.
           </CardContent>
         </Card>
       ) : null}
@@ -96,9 +86,7 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
                   <span>{memberLabel}</span>
                   {" · "}
                   <span>
-                    {group.autoApprove
-                      ? "auto-approves new members"
-                      : "requires owner approval"}
+                    {group.autoApprove ? "auto-approves new members" : "requires owner approval"}
                   </span>
                 </CardDescription>
               </div>
@@ -111,9 +99,7 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
                 isAuthenticated={Boolean(session)}
                 currentUserId={session?.user.id ?? null}
                 membership={
-                  membership
-                    ? { role: membership.role, status: membership.status }
-                    : null
+                  membership ? { role: membership.role, status: membership.status } : null
                 }
                 isArchived={isArchived}
                 initialMutedTypes={mutedTypes}

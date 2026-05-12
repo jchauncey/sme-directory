@@ -53,10 +53,7 @@ export type ConsumeFail = { allowed: false; retryAfterMs: number; remaining: num
  * Consume one token for `(key, group)`. Lower-level helper exposed for
  * tests; production callers should prefer `assertRateLimit`.
  */
-export async function consume(
-  key: string,
-  group: LimitGroup,
-): Promise<ConsumeOk | ConsumeFail> {
+export async function consume(key: string, group: LimitGroup): Promise<ConsumeOk | ConsumeFail> {
   const limit = LIMITS[group];
   const result = await getStore().consume(`${group}:${key}`, 1, limit);
   if (result.allowed) {
@@ -122,9 +119,7 @@ export async function assertRateLimitForAction(group: LimitGroup): Promise<void>
  *
  * Only mutating verbs are inspected — GET/HEAD/OPTIONS pass through untouched.
  */
-export async function applyRateLimitToApiRequest(
-  req: NextRequest,
-): Promise<Response | null> {
+export async function applyRateLimitToApiRequest(req: NextRequest): Promise<Response | null> {
   const method = req.method.toUpperCase();
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
     return null;
@@ -137,8 +132,7 @@ export async function applyRateLimitToApiRequest(
   const limit = LIMITS[group];
   const ip = clientIpFromRequest(req);
   const userId = await readUserIdFromRequest(req);
-  const key =
-    limit.scope === "user" ? userId || ip || "unknown" : ip || "unknown";
+  const key = limit.scope === "user" ? userId || ip || "unknown" : ip || "unknown";
   const result = await consume(key, group);
   if (result.allowed) return null;
 

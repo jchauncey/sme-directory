@@ -145,13 +145,7 @@ export function NotificationsControls({ selectedTypes, unreadOnly, per, hasUnrea
   );
 }
 
-export function MarkRowReadButton({
-  id,
-  alreadyRead,
-}: {
-  id: string;
-  alreadyRead: boolean;
-}) {
+export function MarkRowReadButton({ id, alreadyRead }: { id: string; alreadyRead: boolean }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 

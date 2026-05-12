@@ -75,11 +75,7 @@ export function usePersistedCollapse(id: string): {
   collapsed: boolean;
   toggle: () => void;
 } {
-  const map = useSyncExternalStore(
-    subscribe,
-    getClientSnapshot,
-    () => SERVER_SNAPSHOT,
-  );
+  const map = useSyncExternalStore(subscribe, getClientSnapshot, () => SERVER_SNAPSHOT);
 
   const collapsed = map[id] === true;
 

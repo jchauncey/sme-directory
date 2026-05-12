@@ -45,7 +45,7 @@ export function FavoriteButton({
   };
 
   const label = favorited ? "Remove from favorites" : "Add to favorites";
-  const title = disabled ? disabledReason ?? label : label;
+  const title = disabled ? (disabledReason ?? label) : label;
 
   return (
     <div className="inline-flex items-center gap-1">
@@ -64,10 +64,7 @@ export function FavoriteButton({
           " disabled:cursor-not-allowed disabled:opacity-60"
         }
       >
-        <StarIcon
-          className="h-3.5 w-3.5"
-          fill={favorited ? "currentColor" : "none"}
-        />
+        <StarIcon className="h-3.5 w-3.5" fill={favorited ? "currentColor" : "none"} />
       </button>
       {error ? (
         <span className="text-xs text-red-600 dark:text-red-400" role="alert">

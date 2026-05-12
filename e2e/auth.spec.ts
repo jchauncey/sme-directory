@@ -14,7 +14,5 @@ test("sign in then sign out", async ({ page }) => {
   await page.getByRole("menuitem", { name: "Sign out" }).click();
 
   await expect(page).toHaveURL("/");
-  await expect(
-    page.getByRole("navigation").getByRole("link", { name: "Sign in" }),
-  ).toBeVisible();
+  await expect(page.getByRole("navigation").getByRole("link", { name: "Sign in" })).toBeVisible();
 });

@@ -152,11 +152,7 @@ export function GroupActionBar({
   return (
     <div className="flex items-center gap-1">
       {isAuthenticated ? (
-        <GroupFavoriteButton
-          groupId={groupId}
-          slug={slug}
-          initialFavorited={initialFavorited}
-        />
+        <GroupFavoriteButton groupId={groupId} slug={slug} initialFavorited={initialFavorited} />
       ) : null}
 
       <Button

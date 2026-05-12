@@ -28,9 +28,7 @@ export default async function GroupSettingsPage({ params }: Props) {
   if (!(await isOwnerOrModerator(group.id, session.user.id))) notFound();
   const viewerIsOwner = await isOwner(group.id, session.user.id);
 
-  const pending = group.archivedAt
-    ? []
-    : await listPendingApplications(group.id);
+  const pending = group.archivedAt ? [] : await listPendingApplications(group.id);
   const applications: PendingApplicationView[] = pending.map((m) => ({
     userId: m.userId,
     email: m.user.email,
@@ -84,9 +82,7 @@ export default async function GroupSettingsPage({ params }: Props) {
             {isArchived ? (
               <dl className="space-y-2 text-sm">
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Name
-                  </dt>
+                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Name</dt>
                   <dd>{group.name}</dd>
                 </div>
                 <div>
@@ -116,7 +112,8 @@ export default async function GroupSettingsPage({ params }: Props) {
           <CardHeader>
             <CardTitle>Avatar</CardTitle>
             <CardDescription>
-              Shown on group cards, the group page, and search results. PNG, JPEG, or WebP — up to 2 MB.
+              Shown on group cards, the group page, and search results. PNG, JPEG, or WebP — up to 2
+              MB.
             </CardDescription>
           </CardHeader>
           <CardContent>

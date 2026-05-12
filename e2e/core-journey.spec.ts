@@ -80,9 +80,7 @@ test("canonical owner→applicant journey", async ({ browser }) => {
     await expect(applicantPage.getByText("✓ Accepted answer")).toBeVisible();
 
     // 9. Applicant favorites the question.
-    const favoriteButton = applicantPage
-      .getByRole("button", { name: "Add to favorites" })
-      .first();
+    const favoriteButton = applicantPage.getByRole("button", { name: "Add to favorites" }).first();
     await favoriteButton.click();
     await expect(
       applicantPage.getByRole("button", { name: "Remove from favorites" }).first(),

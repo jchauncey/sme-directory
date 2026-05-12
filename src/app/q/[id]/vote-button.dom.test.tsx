@@ -27,9 +27,7 @@ afterEach(() => {
 
 describe("VoteButton", () => {
   it("renders the initial score and is not pressed", () => {
-    render(
-      <VoteButton {...baseProps} initialScore={3} initialVoted={false} />,
-    );
+    render(<VoteButton {...baseProps} initialScore={3} initialVoted={false} />);
     const button = screen.getByRole("button", { name: "Upvote" });
     expect(button).toHaveAttribute("aria-pressed", "false");
     expect(button).toHaveTextContent("3");
@@ -45,9 +43,7 @@ describe("VoteButton", () => {
     );
 
     const user = userEvent.setup();
-    render(
-      <VoteButton {...baseProps} initialScore={3} initialVoted={false} />,
-    );
+    render(<VoteButton {...baseProps} initialScore={3} initialVoted={false} />);
     const button = screen.getByRole("button", { name: "Upvote" });
 
     await user.click(button);
@@ -55,12 +51,7 @@ describe("VoteButton", () => {
     // Optimistic state: voted=true, score=4
     expect(button).toHaveAttribute("aria-pressed", "true");
     expect(button).toHaveTextContent("4");
-    expect(mockedVoteAction).toHaveBeenCalledWith(
-      "question",
-      "q-1",
-      "q-1",
-      "test-token",
-    );
+    expect(mockedVoteAction).toHaveBeenCalledWith("question", "q-1", "q-1", "test-token");
 
     await Promise.resolve();
     resolveVote({ ok: true, voted: true, voteScore: 5 });
@@ -78,9 +69,7 @@ describe("VoteButton", () => {
     });
 
     const user = userEvent.setup();
-    render(
-      <VoteButton {...baseProps} initialScore={3} initialVoted={false} />,
-    );
+    render(<VoteButton {...baseProps} initialScore={3} initialVoted={false} />);
     const button = screen.getByRole("button", { name: "Upvote" });
 
     await user.click(button);
@@ -104,10 +93,7 @@ describe("VoteButton", () => {
     );
     const button = screen.getByRole("button", { name: "Upvote" });
     expect(button).toBeDisabled();
-    expect(button).toHaveAttribute(
-      "title",
-      "You can't vote on your own question.",
-    );
+    expect(button).toHaveAttribute("title", "You can't vote on your own question.");
 
     await user.click(button);
     expect(mockedVoteAction).not.toHaveBeenCalled();

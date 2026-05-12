@@ -29,11 +29,7 @@ export async function POST(req: Request, ctx: Ctx): Promise<Response> {
   if (!parsed.success) return validationFailed(parsed.error);
 
   try {
-    const question = await acceptAnswer(
-      id,
-      parsed.data.answerId ?? null,
-      session.user.id,
-    );
+    const question = await acceptAnswer(id, parsed.data.answerId ?? null, session.user.id);
     if (parsed.data.answerId) {
       try {
         const acceptedAnswerId = parsed.data.answerId;

@@ -11,7 +11,14 @@ export const searchQuerySchema = z
     groupIds: z
       .string()
       .optional()
-      .transform((v) => (v ? v.split(",").map((s) => s.trim()).filter(Boolean) : []))
+      .transform((v) =>
+        v
+          ? v
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [],
+      )
       .pipe(z.array(z.string().min(1)).max(50, "At most 50 groupIds.")),
     page: z.coerce.number().int().min(1).default(1),
     per: z.coerce.number().int().min(1).max(50).default(20),

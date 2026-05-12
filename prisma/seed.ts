@@ -1290,9 +1290,7 @@ const notifications: SeedNotification[] = (() => {
     const author = userById.get(q.authorId);
     if (!group || !author) continue;
     const recipients = memberships
-      .filter(
-        (m) => m.groupId === q.groupId && m.status === "approved" && m.userId !== q.authorId,
-      )
+      .filter((m) => m.groupId === q.groupId && m.status === "approved" && m.userId !== q.authorId)
       .map((m) => m.userId);
     const payload: SeedQuestionCreatedPayload = {
       questionId: q.id,

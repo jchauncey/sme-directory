@@ -1,10 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  RateLimitError,
-  __resetStoreForTests,
-  assertRateLimit,
-  consume,
-} from "./index";
+import { RateLimitError, __resetStoreForTests, assertRateLimit, consume } from "./index";
 import { LIMITS, groupForApiPath } from "./config";
 
 beforeEach(async () => {
@@ -15,9 +10,7 @@ describe("assertRateLimit", () => {
   it("allows N calls up to capacity, then throws RateLimitError with retryAfterMs >= 1", async () => {
     const capacity = LIMITS.signIn.capacity;
     for (let i = 0; i < capacity; i += 1) {
-      await expect(
-        assertRateLimit({ group: "signIn", ip: "1.2.3.4" }),
-      ).resolves.toBeUndefined();
+      await expect(assertRateLimit({ group: "signIn", ip: "1.2.3.4" })).resolves.toBeUndefined();
     }
 
     let caught: unknown;
@@ -34,14 +27,12 @@ describe("assertRateLimit", () => {
     for (let i = 0; i < LIMITS.signIn.capacity; i += 1) {
       await assertRateLimit({ group: "signIn", ip: "1.1.1.1" });
     }
-    await expect(
-      assertRateLimit({ group: "signIn", ip: "1.1.1.1" }),
-    ).rejects.toBeInstanceOf(RateLimitError);
+    await expect(assertRateLimit({ group: "signIn", ip: "1.1.1.1" })).rejects.toBeInstanceOf(
+      RateLimitError,
+    );
 
     // Different IP — fresh bucket.
-    await expect(
-      assertRateLimit({ group: "signIn", ip: "2.2.2.2" }),
-    ).resolves.toBeUndefined();
+    await expect(assertRateLimit({ group: "signIn", ip: "2.2.2.2" })).resolves.toBeUndefined();
   });
 
   it("isolates user-scoped buckets per userId", async () => {

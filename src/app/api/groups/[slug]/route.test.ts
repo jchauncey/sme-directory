@@ -234,10 +234,7 @@ describe("DELETE /api/groups/[slug]", () => {
     const ownerSess = (await auth.getSession())!;
     const slug = `del-then-patch-${Date.now()}`;
     await createGroup({ name: "P", slug }, ownerSess.user.id);
-    const archiveRes = await DELETE(
-      jsonReq(`http://x/api/groups/${slug}`, "DELETE"),
-      ctx(slug),
-    );
+    const archiveRes = await DELETE(jsonReq(`http://x/api/groups/${slug}`, "DELETE"), ctx(slug));
     expect(archiveRes.status).toBe(200);
     const patchRes = await PATCH(
       jsonReq(`http://x/api/groups/${slug}`, "PATCH", { name: "Whoops" }),

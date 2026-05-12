@@ -352,9 +352,9 @@ describe("setMembershipRole", () => {
     await db.membership.create({
       data: { groupId: group.id, userId: u.id, role: "member", status: "approved" },
     });
-    await expect(
-      setMembershipRole(group.id, u.id, "moderator", mod.id),
-    ).rejects.toBeInstanceOf(AuthorizationError);
+    await expect(setMembershipRole(group.id, u.id, "moderator", mod.id)).rejects.toBeInstanceOf(
+      AuthorizationError,
+    );
   });
 
   it("non-member cannot change roles", async () => {
@@ -386,9 +386,9 @@ describe("setMembershipRole", () => {
       where: { id: group.id },
       data: { archivedAt: new Date() },
     });
-    await expect(
-      setMembershipRole(group.id, u.id, "moderator", owner.id),
-    ).rejects.toBeInstanceOf(ConflictError);
+    await expect(setMembershipRole(group.id, u.id, "moderator", owner.id)).rejects.toBeInstanceOf(
+      ConflictError,
+    );
   });
 
   it("throws NotFoundError for a missing target membership", async () => {
@@ -405,9 +405,9 @@ describe("setMembershipRole", () => {
     await db.membership.create({
       data: { groupId: group.id, userId: u.id, role: "member", status: "pending" },
     });
-    await expect(
-      setMembershipRole(group.id, u.id, "moderator", owner.id),
-    ).rejects.toBeInstanceOf(ConflictError);
+    await expect(setMembershipRole(group.id, u.id, "moderator", owner.id)).rejects.toBeInstanceOf(
+      ConflictError,
+    );
   });
 
   it("is a no-op when role is already the requested value", async () => {
@@ -460,9 +460,7 @@ describe("leaveGroup", () => {
 
   it("throws SoleOwnerCannotLeaveError when caller is the only approved owner", async () => {
     const { owner, group } = await makeGroup(db);
-    await expect(leaveGroup(group.id, owner.id)).rejects.toBeInstanceOf(
-      SoleOwnerCannotLeaveError,
-    );
+    await expect(leaveGroup(group.id, owner.id)).rejects.toBeInstanceOf(SoleOwnerCannotLeaveError);
   });
 
   it("allows an owner to leave when another approved owner exists", async () => {
@@ -504,9 +502,9 @@ describe("transferOwnershipAndLeave", () => {
 
   it("throws InvalidSuccessorError when successor is the same as caller", async () => {
     const { owner, group } = await makeGroup(db);
-    await expect(
-      transferOwnershipAndLeave(group.id, owner.id, owner.id),
-    ).rejects.toBeInstanceOf(InvalidSuccessorError);
+    await expect(transferOwnershipAndLeave(group.id, owner.id, owner.id)).rejects.toBeInstanceOf(
+      InvalidSuccessorError,
+    );
   });
 
   it("throws AuthorizationError when caller is not an approved owner", async () => {
@@ -519,9 +517,9 @@ describe("transferOwnershipAndLeave", () => {
     await db.membership.create({
       data: { groupId: group.id, userId: other.id, role: "member", status: "approved" },
     });
-    await expect(
-      transferOwnershipAndLeave(group.id, member.id, other.id),
-    ).rejects.toBeInstanceOf(AuthorizationError);
+    await expect(transferOwnershipAndLeave(group.id, member.id, other.id)).rejects.toBeInstanceOf(
+      AuthorizationError,
+    );
   });
 
   it("does not modify state when validation fails (atomic)", async () => {

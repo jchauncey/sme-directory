@@ -1,9 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileFavoriteList } from "@/components/profile/profile-favorite-list";
 import { requireAuth } from "@/lib/auth";
 import { listFavoritesByUser } from "@/lib/profile";

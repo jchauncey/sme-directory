@@ -3,10 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { CSRF_HEADER, readCsrfToken } from "@/lib/csrf-client";
-import {
-  NOTIFICATION_CATEGORIES,
-  type NotificationCategory,
-} from "@/lib/notification-categories";
+import { NOTIFICATION_CATEGORIES, type NotificationCategory } from "@/lib/notification-categories";
 
 const TYPE_LABELS: Record<NotificationCategory, string> = {
   question: "New questions",
@@ -20,11 +17,7 @@ type Props = {
   initialMutedTypes: NotificationCategory[];
 };
 
-export function NotificationPreferencesControl({
-  groupId,
-  groupName,
-  initialMutedTypes,
-}: Props) {
+export function NotificationPreferencesControl({ groupId, groupName, initialMutedTypes }: Props) {
   const [mutedTypes, setMutedTypes] = useState<NotificationCategory[]>(initialMutedTypes);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);

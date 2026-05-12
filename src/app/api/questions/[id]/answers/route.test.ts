@@ -80,10 +80,7 @@ async function createGroupWithApprovedAuthor(slug: string) {
   const ownerEmail = `o-${slug}@example.com`;
   await auth.signIn(ownerEmail);
   const ownerSess = (await auth.getSession())!;
-  const group = await createGroup(
-    { name: slug, slug, autoApprove: true },
-    ownerSess.user.id,
-  );
+  const group = await createGroup({ name: slug, slug, autoApprove: true }, ownerSess.user.id);
   const question = await db.question.create({
     data: {
       groupId: group.id,
@@ -154,10 +151,7 @@ describe("POST /api/questions/[id]/answers", () => {
     await auth.signIn(ownerEmail);
     const ownerSess = (await auth.getSession())!;
     const slug = `pending-${Date.now()}`;
-    const group = await createGroup(
-      { name: "P", slug, autoApprove: false },
-      ownerSess.user.id,
-    );
+    const group = await createGroup({ name: "P", slug, autoApprove: false }, ownerSess.user.id);
     const question = await db.question.create({
       data: {
         groupId: group.id,

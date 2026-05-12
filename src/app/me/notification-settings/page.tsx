@@ -1,11 +1,5 @@
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NotificationPreferencesControl } from "@/components/notification-preferences-control";
 import { requireAuth } from "@/lib/auth";
 import { listPreferencesForUser } from "@/lib/notification-preferences";
@@ -43,20 +37,12 @@ export default async function NotificationSettingsPage() {
           ) : (
             <ul className="space-y-4">
               {groups.map((g) => (
-                <li
-                  key={g.id}
-                  className="space-y-2 rounded-md border border-border p-3"
-                >
+                <li key={g.id} className="space-y-2 rounded-md border border-border p-3">
                   <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <Link
-                      href={`/groups/${g.slug}`}
-                      className="font-medium hover:underline"
-                    >
+                    <Link href={`/groups/${g.slug}`} className="font-medium hover:underline">
                       {g.name}
                     </Link>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {g.slug}
-                    </span>
+                    <span className="font-mono text-xs text-muted-foreground">{g.slug}</span>
                   </div>
                   <NotificationPreferencesControl
                     groupId={g.id}

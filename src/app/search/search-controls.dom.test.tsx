@@ -34,10 +34,7 @@ describe("SearchControls", () => {
     render(<SearchControls {...baseProps} myGroups={[]} />);
     const myGroupsButton = screen.getByRole("button", { name: /My groups/i });
     expect(myGroupsButton).toBeDisabled();
-    expect(myGroupsButton).toHaveAttribute(
-      "title",
-      "Join a group to use this scope.",
-    );
+    expect(myGroupsButton).toHaveAttribute("title", "Join a group to use this scope.");
   });
 
   it("reveals checkboxes for every group when Pick groups is selected", async () => {
@@ -51,9 +48,7 @@ describe("SearchControls", () => {
     checkboxes.forEach((cb) => expect(cb).not.toBeChecked());
 
     await user.click(checkboxes[0]!);
-    expect(
-      screen.getByText(/Choose groups \(1 selected\)/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Choose groups \(1 selected\)/i)).toBeInTheDocument();
   });
 
   it("debounces query input and pushes the URL", async () => {
@@ -82,9 +77,7 @@ describe("SearchControls", () => {
     expect(trigger).toHaveAccessibleName(/currently All/i);
 
     await user.click(trigger);
-    await user.click(
-      await screen.findByRole("menuitemradio", { name: "Answered" }),
-    );
+    await user.click(await screen.findByRole("menuitemradio", { name: "Answered" }));
 
     await waitFor(() => {
       expect(replace).toHaveBeenCalled();
@@ -97,21 +90,15 @@ describe("SearchControls", () => {
     const user = userEvent.setup();
     render(<SearchControls {...baseProps} />);
 
-    await user.click(
-      screen.getByRole("button", { name: /Filter by date range/i }),
-    );
-    await user.click(
-      await screen.findByRole("menuitemradio", { name: "Past week" }),
-    );
+    await user.click(screen.getByRole("button", { name: /Filter by date range/i }));
+    await user.click(await screen.findByRole("menuitemradio", { name: "Past week" }));
     await waitFor(() => {
       const last = replace.mock.calls.at(-1)?.[0] as string | undefined;
       expect(last).toMatch(/[?&]range=week(&|$)/);
     });
 
     await user.click(screen.getByRole("button", { name: /Sort results/i }));
-    await user.click(
-      await screen.findByRole("menuitemradio", { name: "Newest" }),
-    );
+    await user.click(await screen.findByRole("menuitemradio", { name: "Newest" }));
     await waitFor(() => {
       const last = replace.mock.calls.at(-1)?.[0] as string | undefined;
       expect(last).toMatch(/[?&]sort=newest(&|$)/);
@@ -137,8 +124,6 @@ describe("SearchControls", () => {
     });
     const [calledUrl, calledInit] = fetchSpy.mock.calls.at(-1) ?? [];
     expect(calledUrl).toMatch(/^\/api\/users\/search\?q=jo&limit=8$/);
-    expect(calledInit).toEqual(
-      expect.objectContaining({ credentials: "same-origin" }),
-    );
+    expect(calledInit).toEqual(expect.objectContaining({ credentials: "same-origin" }));
   });
 });

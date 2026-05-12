@@ -6,8 +6,7 @@ import { afterAll, beforeAll } from "vitest";
 import type { PrismaClient } from "@prisma/client";
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, "..");
-const DEFAULT_AUTH_SECRET =
-  "0".repeat(32) + "abcdef0123456789abcdef0123456789";
+const DEFAULT_AUTH_SECRET = "0".repeat(32) + "abcdef0123456789abcdef0123456789";
 const POSTGRES_SCHEMA_FILE = "prisma/schema.postgres.prisma";
 const PRISMA_BIN = path.join(PROJECT_ROOT, "node_modules", ".bin", "prisma");
 
@@ -35,10 +34,7 @@ export function setupTestDb(label: string): TestDbHandle {
 
 function setupSqliteTestDb(label: string): TestDbHandle {
   const workerId = process.env.VITEST_WORKER_ID ?? "0";
-  const dbPath = path.join(
-    os.tmpdir(),
-    `sme-${label}-w${workerId}-${Date.now()}.db`,
-  );
+  const dbPath = path.join(os.tmpdir(), `sme-${label}-w${workerId}-${Date.now()}.db`);
   process.env.DATABASE_URL = `file:${dbPath}`;
 
   let cached: PrismaClient | null = null;
@@ -110,12 +106,7 @@ function setupPostgresTestDb(label: string): TestDbHandle {
     runDdl(bootUrl.toString(), `CREATE SCHEMA IF NOT EXISTS "${schemaName}";`);
     execFileSync(
       PRISMA_BIN,
-      [
-        "db",
-        "push",
-        `--schema=${POSTGRES_SCHEMA_FILE}`,
-        "--skip-generate",
-      ],
+      ["db", "push", `--schema=${POSTGRES_SCHEMA_FILE}`, "--skip-generate"],
       {
         cwd: PROJECT_ROOT,
         env: { ...process.env, DATABASE_URL: testUrl.toString() },
@@ -131,10 +122,7 @@ function setupPostgresTestDb(label: string): TestDbHandle {
       await cached.$disconnect();
     }
     try {
-      runDdl(
-        bootUrl.toString(),
-        `DROP SCHEMA IF EXISTS "${schemaName}" CASCADE;`,
-      );
+      runDdl(bootUrl.toString(), `DROP SCHEMA IF EXISTS "${schemaName}" CASCADE;`);
     } catch (err) {
       // Surface but don't fail the run — the next CI job starts fresh.
       console.warn(`setupTestDb: failed to drop schema ${schemaName}:`, err);

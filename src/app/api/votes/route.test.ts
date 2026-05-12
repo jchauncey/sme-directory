@@ -99,9 +99,7 @@ async function setupGroupWithQuestion(autoApprove = true) {
 
 describe("POST /api/votes", () => {
   it("returns 401 when unauthenticated", async () => {
-    const res = await POST(
-      jsonReq("POST", { targetType: "question", targetId: "any", value: 1 }),
-    );
+    const res = await POST(jsonReq("POST", { targetType: "question", targetId: "any", value: 1 }));
     expect(res.status).toBe(401);
   });
 
@@ -113,9 +111,7 @@ describe("POST /api/votes", () => {
 
   it("returns 400 when value is not 1", async () => {
     await auth.signIn(`${uniq("u")}@example.com`);
-    const res = await POST(
-      jsonReq("POST", { targetType: "question", targetId: "x", value: 2 }),
-    );
+    const res = await POST(jsonReq("POST", { targetType: "question", targetId: "x", value: 2 }));
     expect(res.status).toBe(400);
   });
 
@@ -205,9 +201,7 @@ describe("POST /api/votes", () => {
     const sess = (await auth.getSession())!;
     await applyToGroup(group.id, sess.user.id);
 
-    await POST(
-      jsonReq("POST", { targetType: "question", targetId: question.id, value: 1 }),
-    );
+    await POST(jsonReq("POST", { targetType: "question", targetId: question.id, value: 1 }));
     const res = await POST(
       jsonReq("POST", { targetType: "question", targetId: question.id, value: 1 }),
     );

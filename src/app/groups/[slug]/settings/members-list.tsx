@@ -39,13 +39,7 @@ async function readError(res: Response): Promise<string> {
   }
 }
 
-export function MembersList({
-  slug,
-  viewerUserId,
-  viewerIsOwner,
-  archived,
-  members,
-}: Props) {
+export function MembersList({ slug, viewerUserId, viewerIsOwner, archived, members }: Props) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pendingRemoval, setPendingRemoval] = useState<MembersListItem | null>(null);

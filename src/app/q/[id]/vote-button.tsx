@@ -53,7 +53,7 @@ export function VoteButton({
   };
 
   const label = voted ? "Remove vote" : "Upvote";
-  const title = disabled ? disabledReason ?? label : label;
+  const title = disabled ? (disabledReason ?? label) : label;
 
   return (
     <div className="inline-flex items-center gap-1">

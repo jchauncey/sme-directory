@@ -21,16 +21,13 @@ afterEach(() => {
 
 describe("GroupFavoriteButton", () => {
   it("renders not favorited initially", () => {
-    render(
-      <GroupFavoriteButton groupId="g-1" slug="g" initialFavorited={false} />,
-    );
+    render(<GroupFavoriteButton groupId="g-1" slug="g" initialFavorited={false} />);
     const button = screen.getByRole("button", { name: "Add to favorites" });
     expect(button).toHaveAttribute("aria-pressed", "false");
   });
 
   it("optimistically toggles on click and confirms with server", async () => {
-    let resolveFn: (v: Awaited<ReturnType<typeof favoriteGroupAction>>) => void =
-      () => {};
+    let resolveFn: (v: Awaited<ReturnType<typeof favoriteGroupAction>>) => void = () => {};
     mocked.mockImplementation(
       () =>
         new Promise<Awaited<ReturnType<typeof favoriteGroupAction>>>((resolve) => {
@@ -39,9 +36,7 @@ describe("GroupFavoriteButton", () => {
     );
 
     const user = userEvent.setup();
-    render(
-      <GroupFavoriteButton groupId="g-1" slug="g" initialFavorited={false} />,
-    );
+    render(<GroupFavoriteButton groupId="g-1" slug="g" initialFavorited={false} />);
     const button = screen.getByRole("button", { name: "Add to favorites" });
 
     await user.click(button);
@@ -59,9 +54,7 @@ describe("GroupFavoriteButton", () => {
     mocked.mockResolvedValue({ ok: false, error: "Could not update favorite." });
 
     const user = userEvent.setup();
-    render(
-      <GroupFavoriteButton groupId="g-1" slug="g" initialFavorited={false} />,
-    );
+    render(<GroupFavoriteButton groupId="g-1" slug="g" initialFavorited={false} />);
     const button = screen.getByRole("button", { name: "Add to favorites" });
 
     await user.click(button);

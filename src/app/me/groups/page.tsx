@@ -1,11 +1,5 @@
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileGroupList } from "@/components/profile/profile-group-list";
 import { requireAuth } from "@/lib/auth";
 import { listPreferencesForUser } from "@/lib/notification-preferences";
@@ -23,9 +17,7 @@ export default async function MyGroupsPage() {
   const approved = allGroups.filter((g) => g.status === "approved");
   const pending = allGroups.filter((g) => g.status !== "approved");
 
-  const mutedTypesByGroupId = Object.fromEntries(
-    preferences.map((p) => [p.groupId, p.mutedTypes]),
-  );
+  const mutedTypesByGroupId = Object.fromEntries(preferences.map((p) => [p.groupId, p.mutedTypes]));
 
   return (
     <div className="space-y-6">
@@ -58,16 +50,10 @@ export default async function MyGroupsPage() {
           <CardTitle className="text-base">
             Pending applications {pending.length > 0 ? `(${pending.length})` : ""}
           </CardTitle>
-          <CardDescription>
-            Groups you&rsquo;ve applied to, with current status.
-          </CardDescription>
+          <CardDescription>Groups you&rsquo;ve applied to, with current status.</CardDescription>
         </CardHeader>
         <CardContent className="pt-4">
-          <ProfileGroupList
-            items={pending}
-            viewer="self"
-            emptyState="No pending applications."
-          />
+          <ProfileGroupList items={pending} viewer="self" emptyState="No pending applications." />
         </CardContent>
       </Card>
     </div>

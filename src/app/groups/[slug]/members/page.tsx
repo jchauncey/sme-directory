@@ -1,12 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { getGroupBySlug } from "@/lib/groups";
@@ -28,13 +22,10 @@ export default async function GroupMembersPage({ params, searchParams }: Props) 
   const membersPage = await listApprovedMembersPage(group.id, { page, per: PER_PAGE });
 
   const totalPages = Math.max(Math.ceil(membersPage.total / PER_PAGE), 1);
-  const memberLabel =
-    membersPage.total === 1 ? "1 member" : `${membersPage.total} members`;
+  const memberLabel = membersPage.total === 1 ? "1 member" : `${membersPage.total} members`;
 
   const buildHref = (p: number): string =>
-    p > 1
-      ? `/groups/${group.slug}/members?page=${p}`
-      : `/groups/${group.slug}/members`;
+    p > 1 ? `/groups/${group.slug}/members?page=${p}` : `/groups/${group.slug}/members`;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -60,10 +51,7 @@ export default async function GroupMembersPage({ params, searchParams }: Props) 
                 {membersPage.items.map((m) => (
                   <li key={m.userId} className="flex items-center gap-3 text-sm">
                     <UserAvatar user={m} size="sm" />
-                    <Link
-                      href={`/u/${m.userId}`}
-                      className="hover:underline"
-                    >
+                    <Link href={`/u/${m.userId}`} className="hover:underline">
                       {m.name ?? m.email ?? "Anonymous"}
                     </Link>
                     {m.role !== "member" ? (

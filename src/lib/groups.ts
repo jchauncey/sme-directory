@@ -158,8 +158,7 @@ export async function listGroupsByActivity(
   limit: number,
   opts: { since?: Date } = {},
 ): Promise<GroupListItem[]> {
-  const since =
-    opts.since ?? new Date(Date.now() - ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const since = opts.since ?? new Date(Date.now() - ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
   const [questionAgg, answerAgg] = await Promise.all([
     db.question.groupBy({

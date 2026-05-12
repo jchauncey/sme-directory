@@ -63,10 +63,7 @@ describe("DashboardBlock", () => {
     );
 
     await act(async () => {
-      window.localStorage.setItem(
-        "sme:dashboard:collapsed",
-        JSON.stringify({ "cross-tab": true }),
-      );
+      window.localStorage.setItem("sme:dashboard:collapsed", JSON.stringify({ "cross-tab": true }));
       window.dispatchEvent(
         new StorageEvent("storage", {
           key: "sme:dashboard:collapsed",

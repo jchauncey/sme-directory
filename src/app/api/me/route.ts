@@ -1,9 +1,5 @@
 import { getSession } from "@/lib/auth";
-import {
-  errorToResponse,
-  unauthorized,
-  validationFailed,
-} from "@/lib/api/errors";
+import { errorToResponse, unauthorized, validationFailed } from "@/lib/api/errors";
 import { updateUserProfile } from "@/lib/profile";
 import { updateMeSchema } from "@/lib/validation/users";
 

@@ -1,10 +1,5 @@
 import "server-only";
-import type {
-  MembershipStatus,
-  QuestionStatus,
-  Role,
-  User,
-} from "@prisma/client";
+import type { MembershipStatus, QuestionStatus, Role, User } from "@prisma/client";
 import { db } from "@/lib/db";
 import { voteScoresFor } from "@/lib/votes";
 
@@ -222,12 +217,8 @@ export async function listFavoritesByUser(
   });
   if (favorites.length === 0) return [];
 
-  const questionIds = favorites
-    .filter((f) => f.targetType === "question")
-    .map((f) => f.targetId);
-  const answerIds = favorites
-    .filter((f) => f.targetType === "answer")
-    .map((f) => f.targetId);
+  const questionIds = favorites.filter((f) => f.targetType === "question").map((f) => f.targetId);
+  const answerIds = favorites.filter((f) => f.targetType === "answer").map((f) => f.targetId);
 
   const [questions, answers] = await Promise.all([
     questionIds.length

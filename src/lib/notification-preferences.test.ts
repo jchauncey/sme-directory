@@ -97,9 +97,9 @@ describe("setPreferenceForGroup / getPreferenceForGroup", () => {
     const owner = await makeUser("ao");
     const stranger = await makeUser("st");
     const g = await createGroup({ name: "G", slug: uniq("auth"), autoApprove: false }, owner.id);
-    await expect(
-      setPreferenceForGroup(stranger.id, g.id, ["question"]),
-    ).rejects.toBeInstanceOf(AuthorizationError);
+    await expect(setPreferenceForGroup(stranger.id, g.id, ["question"])).rejects.toBeInstanceOf(
+      AuthorizationError,
+    );
   });
 
   it("throws AuthorizationError for pending applicants", async () => {
@@ -107,9 +107,9 @@ describe("setPreferenceForGroup / getPreferenceForGroup", () => {
     const pending = await makeUser("pp");
     const g = await createGroup({ name: "G", slug: uniq("auth2"), autoApprove: false }, owner.id);
     await applyToGroup(g.id, pending.id);
-    await expect(
-      setPreferenceForGroup(pending.id, g.id, ["question"]),
-    ).rejects.toBeInstanceOf(AuthorizationError);
+    await expect(setPreferenceForGroup(pending.id, g.id, ["question"])).rejects.toBeInstanceOf(
+      AuthorizationError,
+    );
   });
 
   it("throws NotFoundError for unknown group", async () => {

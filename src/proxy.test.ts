@@ -119,9 +119,7 @@ describe("proxy CSRF enforcement on /api/*", () => {
 
 describe("proxy CSRF token issuance", () => {
   it("issues a fresh sme_csrf cookie on a non-mutating request without one", async () => {
-    const res = (await proxy(
-      makeRequest({ method: "GET", path: "/" }),
-    )) as NextResponse;
+    const res = (await proxy(makeRequest({ method: "GET", path: "/" }))) as NextResponse;
     const setCookie = res.cookies.get(CSRF_COOKIE);
     expect(setCookie).toBeDefined();
     expect(setCookie!.value).toMatch(/^[0-9a-f]{64}$/);
@@ -164,9 +162,7 @@ describe("proxy rate limiting on mutating /api/* routes", () => {
   it("allows up to capacity requests on a mutating /api/* route", async () => {
     const capacity = LIMITS.questions.capacity;
     for (let i = 0; i < capacity; i += 1) {
-      const res = await proxy(
-        mutatingRequest("/api/groups/foo/membership/u-1", "10.0.0.1"),
-      );
+      const res = await proxy(mutatingRequest("/api/groups/foo/membership/u-1", "10.0.0.1"));
       expect(res.status).not.toBe(429);
     }
   });
@@ -176,9 +172,7 @@ describe("proxy rate limiting on mutating /api/* routes", () => {
     for (let i = 0; i < capacity; i += 1) {
       await proxy(mutatingRequest("/api/groups/foo/membership/u-1", "10.0.0.2"));
     }
-    const res = await proxy(
-      mutatingRequest("/api/groups/foo/membership/u-1", "10.0.0.2"),
-    );
+    const res = await proxy(mutatingRequest("/api/groups/foo/membership/u-1", "10.0.0.2"));
     expect(res.status).toBe(429);
     const body = await res.json();
     expect(body.error).toBe("RateLimited");

@@ -29,11 +29,7 @@ export default defineConfig({
           // The include glob `*.test.{ts,tsx}` also matches `*.dom.test.tsx`,
           // so we must explicitly exclude dom tests here — they belong to the
           // jsdom project below. Don't drop this exclude.
-          exclude: [
-            ...configDefaults.exclude,
-            "e2e/**",
-            "src/**/*.dom.test.tsx",
-          ],
+          exclude: [...configDefaults.exclude, "e2e/**", "src/**/*.dom.test.tsx"],
         },
       },
       {

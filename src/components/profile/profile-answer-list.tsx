@@ -14,20 +14,12 @@ export function ProfileAnswerList({ items, emptyState }: Props) {
     <ul className="divide-y divide-border">
       {items.map((a) => (
         <li key={a.id} className="py-3 first:pt-0 last:pb-0">
-          <Link
-            href={`/q/${a.question.id}`}
-            className="text-sm font-medium hover:underline"
-          >
+          <Link href={`/q/${a.question.id}`} className="text-sm font-medium hover:underline">
             {a.question.title}
           </Link>
-          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-            {a.bodyExcerpt}
-          </p>
+          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{a.bodyExcerpt}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            <Link
-              href={`/groups/${a.question.group.slug}`}
-              className="hover:underline"
-            >
+            <Link href={`/groups/${a.question.group.slug}`} className="hover:underline">
               {a.question.group.name}
             </Link>
             {" · Score "}

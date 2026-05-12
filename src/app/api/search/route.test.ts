@@ -79,10 +79,7 @@ describe("GET /api/search", () => {
 
   it("returns 200 with question + answer hits matching the query", async () => {
     const author = await makeUser("rh");
-    const group = await createGroup(
-      { name: "RH", slug: uniq("rh"), autoApprove: true },
-      author.id,
-    );
+    const group = await createGroup({ name: "RH", slug: uniq("rh"), autoApprove: true }, author.id);
     const q = await createQuestion(
       { title: "Best ergonomic keyboard tray for posture", body: "discussion of trays" },
       group.id,
@@ -119,16 +116,8 @@ describe("GET /api/search", () => {
       { name: "SB", slug: uniq("sb"), autoApprove: true },
       author.id,
     );
-    await createQuestion(
-      { title: "Echidna habitat in group A", body: "x" },
-      groupA.id,
-      author.id,
-    );
-    await createQuestion(
-      { title: "Echidna habitat in group B", body: "y" },
-      groupB.id,
-      author.id,
-    );
+    await createQuestion({ title: "Echidna habitat in group A", body: "x" }, groupA.id, author.id);
+    await createQuestion({ title: "Echidna habitat in group B", body: "y" }, groupB.id, author.id);
 
     const res = await GET(
       getReq(`?q=echidna&scope=selected&groupIds=${encodeURIComponent(groupA.id)}`),
@@ -143,35 +132,20 @@ describe("GET /api/search", () => {
 
   it("respects page and per for pagination", async () => {
     const author = await makeUser("pg");
-    const group = await createGroup(
-      { name: "PG", slug: uniq("pg"), autoApprove: true },
-      author.id,
-    );
-    await createQuestion(
-      { title: "Platypus fact one", body: "monotreme" },
-      group.id,
-      author.id,
-    );
+    const group = await createGroup({ name: "PG", slug: uniq("pg"), autoApprove: true }, author.id);
+    await createQuestion({ title: "Platypus fact one", body: "monotreme" }, group.id, author.id);
     await new Promise((r) => setTimeout(r, 5));
-    await createQuestion(
-      { title: "Platypus fact two", body: "monotreme" },
-      group.id,
-      author.id,
-    );
+    await createQuestion({ title: "Platypus fact two", body: "monotreme" }, group.id, author.id);
 
     const res1 = await GET(
-      getReq(
-        `?q=platypus&scope=selected&groupIds=${encodeURIComponent(group.id)}&page=1&per=1`,
-      ),
+      getReq(`?q=platypus&scope=selected&groupIds=${encodeURIComponent(group.id)}&page=1&per=1`),
     );
     const json1 = await res1.json();
     expect(json1.items).toHaveLength(1);
     expect(json1.total).toBeGreaterThanOrEqual(2);
 
     const res2 = await GET(
-      getReq(
-        `?q=platypus&scope=selected&groupIds=${encodeURIComponent(group.id)}&page=2&per=1`,
-      ),
+      getReq(`?q=platypus&scope=selected&groupIds=${encodeURIComponent(group.id)}&page=2&per=1`),
     );
     const json2 = await res2.json();
     expect(json2.items).toHaveLength(1);

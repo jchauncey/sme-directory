@@ -33,9 +33,7 @@ describe("FavoriteButton", () => {
   });
 
   it("optimistically toggles and confirms with server", async () => {
-    let resolveFavorite: (
-      v: Awaited<ReturnType<typeof favoriteAction>>,
-    ) => void = () => {};
+    let resolveFavorite: (v: Awaited<ReturnType<typeof favoriteAction>>) => void = () => {};
     mockedFavoriteAction.mockImplementation(
       () =>
         new Promise<Awaited<ReturnType<typeof favoriteAction>>>((resolve) => {
@@ -52,12 +50,7 @@ describe("FavoriteButton", () => {
     // Optimistic flip happens before the server resolves.
     expect(button).toHaveAttribute("aria-pressed", "true");
     expect(button).toHaveAttribute("aria-label", "Remove from favorites");
-    expect(mockedFavoriteAction).toHaveBeenCalledWith(
-      "question",
-      "q-1",
-      "q-1",
-      "test-token",
-    );
+    expect(mockedFavoriteAction).toHaveBeenCalledWith("question", "q-1", "q-1", "test-token");
 
     resolveFavorite({ ok: true, favorited: true });
 
@@ -79,9 +72,7 @@ describe("FavoriteButton", () => {
     await user.click(button);
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(
-      "You must be approved in this group to favorite.",
-    );
+    expect(alert).toHaveTextContent("You must be approved in this group to favorite.");
     expect(button).toHaveAttribute("aria-pressed", "false");
   });
 

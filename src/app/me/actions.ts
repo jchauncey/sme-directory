@@ -15,10 +15,7 @@ export type MeFormState = {
   values?: { name?: string; bio?: string };
 };
 
-export async function updateMeAction(
-  _prev: MeFormState,
-  formData: FormData,
-): Promise<MeFormState> {
+export async function updateMeAction(_prev: MeFormState, formData: FormData): Promise<MeFormState> {
   try {
     await assertCsrf(formData);
   } catch (err) {

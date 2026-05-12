@@ -4,10 +4,7 @@ import { assertGroupNotArchived, getGroupBySlugOrThrow } from "@/lib/groups";
 import { assertApprovedMember } from "@/lib/memberships";
 import { createQuestion, listQuestionsForGroup } from "@/lib/questions";
 import { notifyQuestionCreated } from "@/lib/notifications";
-import {
-  createQuestionSchema,
-  questionListQuerySchema,
-} from "@/lib/validation/questions";
+import { createQuestionSchema, questionListQuerySchema } from "@/lib/validation/questions";
 
 type Ctx = { params: Promise<{ slug: string }> };
 

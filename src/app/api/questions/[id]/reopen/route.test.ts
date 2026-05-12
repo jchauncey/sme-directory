@@ -84,10 +84,7 @@ async function setupAcceptedQuestion(slug: string): Promise<Setup> {
   const ownerEmail = `o-${slug}@example.com`;
   await auth.signIn(ownerEmail);
   const ownerSess = (await auth.getSession())!;
-  const group = await createGroup(
-    { name: slug, slug, autoApprove: true },
-    ownerSess.user.id,
-  );
+  const group = await createGroup({ name: slug, slug, autoApprove: true }, ownerSess.user.id);
 
   cookieStore.clear();
   const authorEmail = `a-${slug}-${Math.random()}@example.com`;
@@ -145,10 +142,7 @@ describe("POST /api/questions/[id]/reopen", () => {
 
   it("returns 404 when question is unknown", async () => {
     await auth.signIn(`u-${Date.now()}@example.com`);
-    const res = await POST(
-      postReq("http://x/api/questions/missing/reopen"),
-      ctx("missing"),
-    );
+    const res = await POST(postReq("http://x/api/questions/missing/reopen"), ctx("missing"));
     expect(res.status).toBe(404);
   });
 

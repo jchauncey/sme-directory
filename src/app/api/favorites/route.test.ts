@@ -102,9 +102,7 @@ async function setupGroupWithQuestion() {
 
 describe("POST /api/favorites", () => {
   it("returns 401 when unauthenticated", async () => {
-    const res = await POST(
-      jsonReq("POST", { targetType: "question", targetId: "any" }),
-    );
+    const res = await POST(jsonReq("POST", { targetType: "question", targetId: "any" }));
     expect(res.status).toBe(401);
   });
 
@@ -122,17 +120,13 @@ describe("POST /api/favorites", () => {
 
   it("returns 400 when targetType is invalid", async () => {
     await auth.signIn(`${uniq("u")}@example.com`);
-    const res = await POST(
-      jsonReq("POST", { targetType: "comment", targetId: "x" }),
-    );
+    const res = await POST(jsonReq("POST", { targetType: "comment", targetId: "x" }));
     expect(res.status).toBe(400);
   });
 
   it("returns 404 when target id is unknown", async () => {
     await auth.signIn(`${uniq("u")}@example.com`);
-    const res = await POST(
-      jsonReq("POST", { targetType: "question", targetId: "does-not-exist" }),
-    );
+    const res = await POST(jsonReq("POST", { targetType: "question", targetId: "does-not-exist" }));
     expect(res.status).toBe(404);
   });
 
@@ -141,9 +135,7 @@ describe("POST /api/favorites", () => {
     cookieStore.clear();
     await auth.signIn(`${uniq("fav")}@example.com`);
 
-    const res = await POST(
-      jsonReq("POST", { targetType: "question", targetId: question.id }),
-    );
+    const res = await POST(jsonReq("POST", { targetType: "question", targetId: question.id }));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.favorited).toBe(true);
@@ -157,9 +149,7 @@ describe("POST /api/favorites", () => {
     await auth.signIn(`${uniq("tog")}@example.com`);
 
     await POST(jsonReq("POST", { targetType: "question", targetId: question.id }));
-    const res = await POST(
-      jsonReq("POST", { targetType: "question", targetId: question.id }),
-    );
+    const res = await POST(jsonReq("POST", { targetType: "question", targetId: question.id }));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.favorited).toBe(false);
@@ -168,9 +158,7 @@ describe("POST /api/favorites", () => {
   it("allows the author to favorite their own question (no self-restriction)", async () => {
     const { question } = await setupGroupWithQuestion();
     // ownerSess is still signed in via cookieStore — author is the caller.
-    const res = await POST(
-      jsonReq("POST", { targetType: "question", targetId: question.id }),
-    );
+    const res = await POST(jsonReq("POST", { targetType: "question", targetId: question.id }));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.favorited).toBe(true);
@@ -180,9 +168,7 @@ describe("POST /api/favorites", () => {
     const { question } = await setupGroupWithQuestion();
     cookieStore.clear();
     await auth.signIn(`${uniq("nonmember")}@example.com`);
-    const res = await POST(
-      jsonReq("POST", { targetType: "question", targetId: question.id }),
-    );
+    const res = await POST(jsonReq("POST", { targetType: "question", targetId: question.id }));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.favorited).toBe(true);
@@ -200,9 +186,7 @@ describe("POST /api/favorites", () => {
 
     cookieStore.clear();
     await auth.signIn(`${uniq("af")}@example.com`);
-    const res = await POST(
-      jsonReq("POST", { targetType: "answer", targetId: answer.id }),
-    );
+    const res = await POST(jsonReq("POST", { targetType: "answer", targetId: answer.id }));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.favorited).toBe(true);

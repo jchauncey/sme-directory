@@ -62,10 +62,7 @@ async function makeUser(label: string) {
 describe("createQuestion", () => {
   it("creates a question owned by the author in the group", async () => {
     const author = await makeUser("author");
-    const group = await createGroup(
-      { name: "G", slug: uniq("g"), autoApprove: true },
-      author.id,
-    );
+    const group = await createGroup({ name: "G", slug: uniq("g"), autoApprove: true }, author.id);
     const q = await createQuestion(
       { title: "How do I do X?", body: "I tried Y but Z happens." },
       group.id,
@@ -81,10 +78,7 @@ describe("createQuestion", () => {
 describe("listQuestionsForGroup", () => {
   it("returns newest first with author, answer count, and vote score", async () => {
     const owner = await makeUser("ownerL");
-    const group = await createGroup(
-      { name: "L", slug: uniq("l"), autoApprove: true },
-      owner.id,
-    );
+    const group = await createGroup({ name: "L", slug: uniq("l"), autoApprove: true }, owner.id);
     const q1 = await createQuestion({ title: "First post", body: "first" }, group.id, owner.id);
     await new Promise((r) => setTimeout(r, 5));
     const q2 = await createQuestion({ title: "Second post", body: "second" }, group.id, owner.id);
@@ -111,10 +105,7 @@ describe("listQuestionsForGroup", () => {
 
   it("paginates with skip/take", async () => {
     const owner = await makeUser("ownerP");
-    const group = await createGroup(
-      { name: "P", slug: uniq("p"), autoApprove: true },
-      owner.id,
-    );
+    const group = await createGroup({ name: "P", slug: uniq("p"), autoApprove: true }, owner.id);
     for (let i = 0; i < 3; i += 1) {
       await createQuestion({ title: `Q${i}`, body: "b" }, group.id, owner.id);
       await new Promise((r) => setTimeout(r, 2));
@@ -128,14 +119,8 @@ describe("listQuestionsForGroup", () => {
 
   it("scopes by group", async () => {
     const owner = await makeUser("ownerS");
-    const groupA = await createGroup(
-      { name: "A", slug: uniq("ga"), autoApprove: true },
-      owner.id,
-    );
-    const groupB = await createGroup(
-      { name: "B", slug: uniq("gb"), autoApprove: true },
-      owner.id,
-    );
+    const groupA = await createGroup({ name: "A", slug: uniq("ga"), autoApprove: true }, owner.id);
+    const groupB = await createGroup({ name: "B", slug: uniq("gb"), autoApprove: true }, owner.id);
     await createQuestion({ title: "in A", body: "x" }, groupA.id, owner.id);
     await createQuestion({ title: "in B", body: "y" }, groupB.id, owner.id);
 
@@ -147,15 +132,8 @@ describe("listQuestionsForGroup", () => {
 describe("getQuestionById", () => {
   it("returns the question with author, group, and answers including vote scores", async () => {
     const author = await makeUser("authD");
-    const group = await createGroup(
-      { name: "D", slug: uniq("d"), autoApprove: true },
-      author.id,
-    );
-    const q = await createQuestion(
-      { title: "Title", body: "Body" },
-      group.id,
-      author.id,
-    );
+    const group = await createGroup({ name: "D", slug: uniq("d"), autoApprove: true }, author.id);
+    const q = await createQuestion({ title: "Title", body: "Body" }, group.id, author.id);
     const answerer = await makeUser("ans");
     const a = await db.answer.create({
       data: { questionId: q.id, authorId: answerer.id, body: "an answer" },
@@ -184,30 +162,16 @@ describe("getQuestionById", () => {
 
   it("returns viewerVote=null when no viewerUserId is supplied", async () => {
     const author = await makeUser("authV0");
-    const group = await createGroup(
-      { name: "V0", slug: uniq("v0"), autoApprove: true },
-      author.id,
-    );
-    const q = await createQuestion(
-      { title: "Title", body: "Body" },
-      group.id,
-      author.id,
-    );
+    const group = await createGroup({ name: "V0", slug: uniq("v0"), autoApprove: true }, author.id);
+    const q = await createQuestion({ title: "Title", body: "Body" }, group.id, author.id);
     const detail = await getQuestionById(q.id);
     expect(detail.viewerVote).toBeNull();
   });
 
   it("returns viewerVote=1 on question and answers the viewer has voted on", async () => {
     const author = await makeUser("authV1");
-    const group = await createGroup(
-      { name: "V1", slug: uniq("v1"), autoApprove: true },
-      author.id,
-    );
-    const q = await createQuestion(
-      { title: "Title", body: "Body" },
-      group.id,
-      author.id,
-    );
+    const group = await createGroup({ name: "V1", slug: uniq("v1"), autoApprove: true }, author.id);
+    const q = await createQuestion({ title: "Title", body: "Body" }, group.id, author.id);
     const a1 = await db.answer.create({
       data: { questionId: q.id, authorId: author.id, body: "answer one" },
     });
@@ -232,15 +196,8 @@ describe("getQuestionById", () => {
 
   it("does not leak another user's vote into viewerVote", async () => {
     const author = await makeUser("authV2");
-    const group = await createGroup(
-      { name: "V2", slug: uniq("v2"), autoApprove: true },
-      author.id,
-    );
-    const q = await createQuestion(
-      { title: "Title", body: "Body" },
-      group.id,
-      author.id,
-    );
+    const group = await createGroup({ name: "V2", slug: uniq("v2"), autoApprove: true }, author.id);
+    const q = await createQuestion({ title: "Title", body: "Body" }, group.id, author.id);
     const otherVoter = await makeUser("otherV2");
     await db.vote.create({
       data: { userId: otherVoter.id, targetType: "question", targetId: q.id, value: 1 },
@@ -312,32 +269,32 @@ describe("softDeleteQuestion", () => {
     const s = await setup("sdp");
     const member = await makeUser("plain-sdp");
     await applyToGroup(s.group.id, member.id);
-    await expect(
-      softDeleteQuestion(s.question.id, member.id),
-    ).rejects.toBeInstanceOf(AuthorizationError);
+    await expect(softDeleteQuestion(s.question.id, member.id)).rejects.toBeInstanceOf(
+      AuthorizationError,
+    );
   });
 
   it("throws AuthorizationError for a non-member", async () => {
     const s = await setup("sdn");
     const stranger = await makeUser("stranger-sdn");
-    await expect(
-      softDeleteQuestion(s.question.id, stranger.id),
-    ).rejects.toBeInstanceOf(AuthorizationError);
+    await expect(softDeleteQuestion(s.question.id, stranger.id)).rejects.toBeInstanceOf(
+      AuthorizationError,
+    );
   });
 
   it("throws NotFoundError when the question is already deleted", async () => {
     const s = await setup("sdd");
     await softDeleteQuestion(s.question.id, s.author.id);
-    await expect(
-      softDeleteQuestion(s.question.id, s.author.id),
-    ).rejects.toBeInstanceOf(NotFoundError);
+    await expect(softDeleteQuestion(s.question.id, s.author.id)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
   });
 
   it("throws NotFoundError for an unknown id", async () => {
     const author = await makeUser("nf");
-    await expect(
-      softDeleteQuestion("does-not-exist", author.id),
-    ).rejects.toBeInstanceOf(NotFoundError);
+    await expect(softDeleteQuestion("does-not-exist", author.id)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
   });
 });
 
@@ -348,11 +305,7 @@ describe("getQuestionById on deleted questions", () => {
       { name: "GDel", slug: uniq("gdel"), autoApprove: true },
       owner.id,
     );
-    const q = await createQuestion(
-      { title: "Will be deleted", body: "Body" },
-      group.id,
-      owner.id,
-    );
+    const q = await createQuestion({ title: "Will be deleted", body: "Body" }, group.id, owner.id);
     await db.answer.create({
       data: { questionId: q.id, authorId: owner.id, body: "Once visible." },
     });
@@ -377,16 +330,8 @@ describe("listQuestionsForGroup excludes soft-deleted", () => {
       { name: "ListDel", slug: uniq("ldel"), autoApprove: true },
       owner.id,
     );
-    const visible = await createQuestion(
-      { title: "still here", body: "b" },
-      group.id,
-      owner.id,
-    );
-    const hidden = await createQuestion(
-      { title: "tombstone", body: "b" },
-      group.id,
-      owner.id,
-    );
+    const visible = await createQuestion({ title: "still here", body: "b" }, group.id, owner.id);
+    const hidden = await createQuestion({ title: "tombstone", body: "b" }, group.id, owner.id);
     await db.question.update({
       where: { id: hidden.id },
       data: { deletedAt: new Date() },
@@ -401,42 +346,24 @@ describe("listQuestionsForGroup excludes soft-deleted", () => {
 describe("acceptAnswer / reopenQuestion on deleted questions", () => {
   it("acceptAnswer throws NotFoundError when the question is deleted", async () => {
     const owner = await makeUser("acc-del");
-    const group = await createGroup(
-      { name: "AD", slug: uniq("ad"), autoApprove: true },
-      owner.id,
-    );
-    const q = await createQuestion(
-      { title: "T", body: "B" },
-      group.id,
-      owner.id,
-    );
+    const group = await createGroup({ name: "AD", slug: uniq("ad"), autoApprove: true }, owner.id);
+    const q = await createQuestion({ title: "T", body: "B" }, group.id, owner.id);
     await db.question.update({
       where: { id: q.id },
       data: { deletedAt: new Date() },
     });
-    await expect(acceptAnswer(q.id, null, owner.id)).rejects.toBeInstanceOf(
-      NotFoundError,
-    );
+    await expect(acceptAnswer(q.id, null, owner.id)).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it("reopenQuestion throws NotFoundError when the question is deleted", async () => {
     const owner = await makeUser("ro-del");
-    const group = await createGroup(
-      { name: "RO", slug: uniq("ro"), autoApprove: true },
-      owner.id,
-    );
-    const q = await createQuestion(
-      { title: "T", body: "B" },
-      group.id,
-      owner.id,
-    );
+    const group = await createGroup({ name: "RO", slug: uniq("ro"), autoApprove: true }, owner.id);
+    const q = await createQuestion({ title: "T", body: "B" }, group.id, owner.id);
     await db.question.update({
       where: { id: q.id },
       data: { status: "answered", deletedAt: new Date() },
     });
-    await expect(reopenQuestion(q.id, owner.id)).rejects.toBeInstanceOf(
-      NotFoundError,
-    );
+    await expect(reopenQuestion(q.id, owner.id)).rejects.toBeInstanceOf(NotFoundError);
   });
 });
 
@@ -453,18 +380,10 @@ describe("listRecentOpenQuestionsAcrossGroups", () => {
     );
 
     // Open question in A (oldest)
-    const qOpenA = await createQuestion(
-      { title: "Open A", body: "body" },
-      groupA.id,
-      owner.id,
-    );
+    const qOpenA = await createQuestion({ title: "Open A", body: "body" }, groupA.id, owner.id);
     // Open question in B (newer)
     await new Promise((r) => setTimeout(r, 10));
-    const qOpenB = await createQuestion(
-      { title: "Open B", body: "body" },
-      groupB.id,
-      owner.id,
-    );
+    const qOpenB = await createQuestion({ title: "Open B", body: "body" }, groupB.id, owner.id);
     // Answered question in A
     await new Promise((r) => setTimeout(r, 10));
     const qAnsweredA = await createQuestion(
@@ -501,11 +420,7 @@ describe("listRecentOpenQuestionsAcrossGroups", () => {
     const owner = await makeUser("lroq-arch");
     const slug = uniq("lroq-arch-g");
     const group = await createGroup({ name: "Arch", slug, autoApprove: true }, owner.id);
-    const q = await createQuestion(
-      { title: "Pre-archive", body: "x" },
-      group.id,
-      owner.id,
-    );
+    const q = await createQuestion({ title: "Pre-archive", body: "x" }, group.id, owner.id);
     await archiveGroup(slug, owner.id);
     const list = await listRecentOpenQuestionsAcrossGroups(50);
     expect(list.find((it) => it.id === q.id)).toBeUndefined();
@@ -518,11 +433,7 @@ describe("listRecentOpenQuestionsAcrossGroups", () => {
       owner.id,
     );
     for (let i = 0; i < 3; i++) {
-      await createQuestion(
-        { title: `Limited ${i}`, body: "x" },
-        group.id,
-        owner.id,
-      );
+      await createQuestion({ title: `Limited ${i}`, body: "x" }, group.id, owner.id);
     }
     const list = await listRecentOpenQuestionsAcrossGroups(2);
     expect(list.length).toBeLessThanOrEqual(2);

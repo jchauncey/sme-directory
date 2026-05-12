@@ -1,23 +1,10 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAuth } from "@/lib/auth";
-import {
-  DEFAULT_PER,
-  MAX_PER,
-  listForUser,
-  type ParsedNotification,
-} from "@/lib/notifications";
-import {
-  isCategory,
-  type NotificationCategory,
-} from "@/lib/notification-categories";
+import { DEFAULT_PER, MAX_PER, listForUser, type ParsedNotification } from "@/lib/notifications";
+import { isCategory, type NotificationCategory } from "@/lib/notification-categories";
 
 import { MarkRowReadButton, NotificationsControls } from "./notifications-controls";
 
@@ -58,7 +45,11 @@ function relativeTime(date: Date): string {
   return date.toLocaleDateString();
 }
 
-function descriptionFor(n: ParsedNotification): { headline: string; subline: string; href: string } {
+function descriptionFor(n: ParsedNotification): {
+  headline: string;
+  subline: string;
+  href: string;
+} {
   switch (n.type) {
     case "question.created":
       return {
@@ -121,11 +112,7 @@ function PageButton({
   if (types.length > 0) sp.set("types", types.join(","));
   if (unread) sp.set("unread", "1");
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      render={<Link href={`/notifications?${sp.toString()}`} />}
-    >
+    <Button variant="outline" size="sm" render={<Link href={`/notifications?${sp.toString()}`} />}>
       {children}
     </Button>
   );

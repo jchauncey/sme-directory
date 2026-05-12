@@ -16,11 +16,7 @@ function parseSort(value: string | undefined): ListGroupsSort {
   return value === "members" ? "members" : "newest";
 }
 
-function buildGroupsHref(
-  sort: ListGroupsSort,
-  includeArchived: boolean,
-  page: number,
-): string {
+function buildGroupsHref(sort: ListGroupsSort, includeArchived: boolean, page: number): string {
   const params = new URLSearchParams();
   if (sort === "members") params.set("sort", "members");
   if (includeArchived) params.set("includeArchived", "1");
@@ -46,9 +42,7 @@ export default async function GroupsPage({ searchParams }: Props) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Groups</h1>
-          <p className="text-sm text-muted-foreground">
-            Browse subject-matter expert groups.
-          </p>
+          <p className="text-sm text-muted-foreground">Browse subject-matter expert groups.</p>
         </div>
         {session ? <Button render={<Link href="/groups/new" />}>Create group</Button> : null}
       </div>

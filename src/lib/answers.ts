@@ -2,15 +2,8 @@ import "server-only";
 import type { Answer } from "@prisma/client";
 import { db } from "@/lib/db";
 import { assertGroupNotArchived } from "@/lib/groups";
-import {
-  AuthorizationError,
-  NotFoundError,
-  assertOwnerOrModerator,
-} from "@/lib/memberships";
-import type {
-  CreateAnswerInput,
-  UpdateAnswerInput,
-} from "@/lib/validation/answers";
+import { AuthorizationError, NotFoundError, assertOwnerOrModerator } from "@/lib/memberships";
+import type { CreateAnswerInput, UpdateAnswerInput } from "@/lib/validation/answers";
 
 export type AnswerWithQuestion = Answer & {
   question: { id: string; groupId: string; authorId: string };
@@ -30,9 +23,7 @@ export async function createAnswer(
   });
 }
 
-export async function getAnswerWithQuestion(
-  answerId: string,
-): Promise<AnswerWithQuestion> {
+export async function getAnswerWithQuestion(answerId: string): Promise<AnswerWithQuestion> {
   const answer = await db.answer.findUnique({
     where: { id: answerId },
     include: {
@@ -59,10 +50,7 @@ export async function updateAnswer(
   });
 }
 
-export async function deleteAnswer(
-  answerId: string,
-  userId: string,
-): Promise<void> {
+export async function deleteAnswer(answerId: string, userId: string): Promise<void> {
   const existing = await getAnswerWithQuestion(answerId);
   await assertOwnerOrModerator(existing.question.groupId, userId);
   await db.answer.delete({ where: { id: answerId } });

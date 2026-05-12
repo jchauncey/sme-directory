@@ -8,9 +8,7 @@ async function signIn(page: Page, email: string): Promise<void> {
   await expect(page).toHaveURL("/account");
 }
 
-test("home dashboard surfaces favorited groups and recent open questions", async ({
-  page,
-}) => {
+test("home dashboard surfaces favorited groups and recent open questions", async ({ page }) => {
   test.slow();
 
   const ts = Date.now();
@@ -40,13 +38,9 @@ test("home dashboard surfaces favorited groups and recent open questions", async
   await page.goto("/");
   // CardTitle renders as a div, so probe via the per-block toggle button.
   await expect(page.getByRole("button", { name: /Top groups$/ })).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /Your favorite groups$/ }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /Your favorite groups$/ })).toBeVisible();
   const openQuestions = page.locator("#dashboard-block-body-open-questions");
-  await expect(
-    openQuestions.getByRole("link", { name: questionTitle }),
-  ).toBeVisible();
+  await expect(openQuestions.getByRole("link", { name: questionTitle })).toBeVisible();
 
   // Empty favorites preview before we star anything.
   const favorites = page.locator("#dashboard-block-body-favorite-groups");

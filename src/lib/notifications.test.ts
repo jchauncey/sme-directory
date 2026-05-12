@@ -68,10 +68,7 @@ async function makeUser(label: string) {
 describe("notifyQuestionCreated", () => {
   it("creates one notification per approved member except the author", async () => {
     const owner = await makeUser("owner");
-    const group = await createGroup(
-      { name: "G", slug: uniq("fan"), autoApprove: false },
-      owner.id,
-    );
+    const group = await createGroup({ name: "G", slug: uniq("fan"), autoApprove: false }, owner.id);
 
     const memberA = await makeUser("memA");
     const memberB = await makeUser("memB");
@@ -117,10 +114,7 @@ describe("notifyQuestionCreated", () => {
 
   it("skips users who muted the question category for this group", async () => {
     const owner = await makeUser("muteOwner");
-    const group = await createGroup(
-      { name: "M", slug: uniq("mute"), autoApprove: true },
-      owner.id,
-    );
+    const group = await createGroup({ name: "M", slug: uniq("mute"), autoApprove: true }, owner.id);
     const muted = await makeUser("muted");
     const noisy = await makeUser("noisy");
     const otherMute = await makeUser("otherMute");
@@ -143,11 +137,7 @@ describe("notifyQuestionCreated", () => {
     await setPreferenceForGroup(muted.id, group.id, ["question"]);
     await setPreferenceForGroup(otherMute.id, group.id, ["answer"]); // muted other category
 
-    const question = await createQuestion(
-      { title: "Hi", body: "body" },
-      group.id,
-      owner.id,
-    );
+    const question = await createQuestion({ title: "Hi", body: "body" }, group.id, owner.id);
     const count = await notifyQuestionCreated(question, group, "Owner");
 
     // Recipients are: noisy + otherMute (muted excluded; owner is the author).
@@ -159,14 +149,8 @@ describe("notifyQuestionCreated", () => {
 
   it("ignores mutes scoped to a different group", async () => {
     const owner = await makeUser("crossOwner");
-    const g1 = await createGroup(
-      { name: "X1", slug: uniq("cx1"), autoApprove: true },
-      owner.id,
-    );
-    const g2 = await createGroup(
-      { name: "X2", slug: uniq("cx2"), autoApprove: true },
-      owner.id,
-    );
+    const g1 = await createGroup({ name: "X1", slug: uniq("cx1"), autoApprove: true }, owner.id);
+    const g2 = await createGroup({ name: "X2", slug: uniq("cx2"), autoApprove: true }, owner.id);
     const member = await makeUser("crossMember");
     await applyToGroup(g1.id, member.id);
     await applyToGroup(g2.id, member.id);
@@ -174,11 +158,7 @@ describe("notifyQuestionCreated", () => {
     // Muted in g2 only — should still receive g1 notifications.
     await setPreferenceForGroup(member.id, g2.id, ["question"]);
 
-    const question = await createQuestion(
-      { title: "X", body: "body" },
-      g1.id,
-      owner.id,
-    );
+    const question = await createQuestion({ title: "X", body: "body" }, g1.id, owner.id);
     const count = await notifyQuestionCreated(question, g1, "Owner");
     expect(count).toBe(1);
     expect(await db.notification.count({ where: { userId: member.id } })).toBe(1);
@@ -186,15 +166,8 @@ describe("notifyQuestionCreated", () => {
 
   it("returns 0 when there are no other approved members", async () => {
     const solo = await makeUser("solo");
-    const group = await createGroup(
-      { name: "S", slug: uniq("solo"), autoApprove: true },
-      solo.id,
-    );
-    const question = await createQuestion(
-      { title: "Alone", body: "body" },
-      group.id,
-      solo.id,
-    );
+    const group = await createGroup({ name: "S", slug: uniq("solo"), autoApprove: true }, solo.id);
+    const question = await createQuestion({ title: "Alone", body: "body" }, group.id, solo.id);
     const count = await notifyQuestionCreated(question, group, "Solo");
     expect(count).toBe(0);
   });
@@ -244,20 +217,9 @@ describe("listForUser", () => {
   it("excludes notifications whose referenced question is soft-deleted", async () => {
     const u = await makeUser("delU");
     const owner = await makeUser("delOwner");
-    const group = await createGroup(
-      { name: "DN", slug: uniq("dn"), autoApprove: true },
-      owner.id,
-    );
-    const visible = await createQuestion(
-      { title: "Visible Q", body: "b" },
-      group.id,
-      owner.id,
-    );
-    const hidden = await createQuestion(
-      { title: "Hidden Q", body: "b" },
-      group.id,
-      owner.id,
-    );
+    const group = await createGroup({ name: "DN", slug: uniq("dn"), autoApprove: true }, owner.id);
+    const visible = await createQuestion({ title: "Visible Q", body: "b" }, group.id, owner.id);
+    const hidden = await createQuestion({ title: "Hidden Q", body: "b" }, group.id, owner.id);
     await db.notification.create({
       data: {
         userId: u.id,
@@ -557,21 +519,10 @@ describe("notifyAnswerPosted", () => {
   it("notifies the question author with deep-link payload", async () => {
     const author = await makeUser("qAuthor");
     const answerer = await makeUser("answerer");
-    const group = await createGroup(
-      { name: "AP", slug: uniq("ap"), autoApprove: true },
-      author.id,
-    );
+    const group = await createGroup({ name: "AP", slug: uniq("ap"), autoApprove: true }, author.id);
     await applyToGroup(group.id, answerer.id);
-    const question = await createQuestion(
-      { title: "Help?", body: "body" },
-      group.id,
-      author.id,
-    );
-    const answer = await createAnswer(
-      { body: "answer body" },
-      question.id,
-      answerer.id,
-    );
+    const question = await createQuestion({ title: "Help?", body: "body" }, group.id, author.id);
+    const answer = await createAnswer({ body: "answer body" }, question.id, answerer.id);
 
     const count = await notifyAnswerPosted(
       { id: answer.id, authorId: answer.authorId },
@@ -595,20 +546,9 @@ describe("notifyAnswerPosted", () => {
 
   it("returns 0 when the answerer is the question author", async () => {
     const author = await makeUser("selfAns");
-    const group = await createGroup(
-      { name: "SA", slug: uniq("sa"), autoApprove: true },
-      author.id,
-    );
-    const question = await createQuestion(
-      { title: "Self", body: "body" },
-      group.id,
-      author.id,
-    );
-    const answer = await createAnswer(
-      { body: "self answer" },
-      question.id,
-      author.id,
-    );
+    const group = await createGroup({ name: "SA", slug: uniq("sa"), autoApprove: true }, author.id);
+    const question = await createQuestion({ title: "Self", body: "body" }, group.id, author.id);
+    const answer = await createAnswer({ body: "self answer" }, question.id, author.id);
 
     const count = await notifyAnswerPosted(
       { id: answer.id, authorId: answer.authorId },
@@ -626,21 +566,10 @@ describe("notifyAnswerAccepted", () => {
   it("notifies the answer author with deep-link payload", async () => {
     const author = await makeUser("aaAuthor");
     const answerer = await makeUser("aaAnswerer");
-    const group = await createGroup(
-      { name: "AA", slug: uniq("aa"), autoApprove: true },
-      author.id,
-    );
+    const group = await createGroup({ name: "AA", slug: uniq("aa"), autoApprove: true }, author.id);
     await applyToGroup(group.id, answerer.id);
-    const question = await createQuestion(
-      { title: "Q", body: "body" },
-      group.id,
-      author.id,
-    );
-    const answer = await createAnswer(
-      { body: "ans" },
-      question.id,
-      answerer.id,
-    );
+    const question = await createQuestion({ title: "Q", body: "body" }, group.id, author.id);
+    const answer = await createAnswer({ body: "ans" }, question.id, answerer.id);
 
     const count = await notifyAnswerAccepted(
       { id: answer.id, authorId: answer.authorId },
@@ -664,20 +593,9 @@ describe("notifyAnswerAccepted", () => {
 
   it("returns 0 when the actor is the answer author (accepting own answer)", async () => {
     const author = await makeUser("selfAccept");
-    const group = await createGroup(
-      { name: "SC", slug: uniq("sc"), autoApprove: true },
-      author.id,
-    );
-    const question = await createQuestion(
-      { title: "Q", body: "body" },
-      group.id,
-      author.id,
-    );
-    const answer = await createAnswer(
-      { body: "ans" },
-      question.id,
-      author.id,
-    );
+    const group = await createGroup({ name: "SC", slug: uniq("sc"), autoApprove: true }, author.id);
+    const question = await createQuestion({ title: "Q", body: "body" }, group.id, author.id);
+    const answer = await createAnswer({ body: "ans" }, question.id, author.id);
 
     const count = await notifyAnswerAccepted(
       { id: answer.id, authorId: answer.authorId },
@@ -695,10 +613,7 @@ describe("notifyMembershipDecision", () => {
   it("notifies the target user on approval", async () => {
     const owner = await makeUser("mdOwner");
     const applicant = await makeUser("mdApplicant");
-    const group = await createGroup(
-      { name: "MD", slug: uniq("md"), autoApprove: false },
-      owner.id,
-    );
+    const group = await createGroup({ name: "MD", slug: uniq("md"), autoApprove: false }, owner.id);
 
     const count = await notifyMembershipDecision(
       "approved",

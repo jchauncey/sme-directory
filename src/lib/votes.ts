@@ -2,11 +2,7 @@ import "server-only";
 import { Prisma, type TargetType } from "@prisma/client";
 import { db } from "@/lib/db";
 import { assertGroupNotArchived } from "@/lib/groups";
-import {
-  AuthorizationError,
-  NotFoundError,
-  assertApprovedMember,
-} from "@/lib/memberships";
+import { AuthorizationError, NotFoundError, assertApprovedMember } from "@/lib/memberships";
 
 export type VoteTargetType = TargetType;
 
@@ -98,9 +94,7 @@ export async function castVote(
       await db.vote.delete({ where: { id: existing.id } });
     } catch (err) {
       // P2025: row already removed by a concurrent request — same outcome.
-      if (
-        !(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025")
-      ) {
+      if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025")) {
         throw err;
       }
     }
@@ -117,9 +111,7 @@ export async function castVote(
       });
     } catch (err) {
       // P2002: a concurrent request inserted the same vote — same outcome.
-      if (
-        !(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")
-      ) {
+      if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) {
         throw err;
       }
     }

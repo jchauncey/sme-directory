@@ -19,10 +19,7 @@ function fieldError(state: UpdateGroupDetailsState, path: string): string | unde
 }
 
 export function GroupDetailsForm({ slug, initialName, initialDescription }: Props) {
-  const [state, formAction, isPending] = useActionState(
-    updateGroupDetailsAction,
-    initialState,
-  );
+  const [state, formAction, isPending] = useActionState(updateGroupDetailsAction, initialState);
   const [name, setName] = useState(state.values?.name ?? initialName);
   const [description, setDescription] = useState(
     state.values?.description ?? initialDescription ?? "",
@@ -45,12 +42,7 @@ export function GroupDetailsForm({ slug, initialName, initialDescription }: Prop
   const descriptionError = fieldError(state, "description");
 
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      onChange={() => setIsDirty(true)}
-      className="space-y-4"
-    >
+    <form ref={formRef} action={formAction} onChange={() => setIsDirty(true)} className="space-y-4">
       <CsrfField />
       <input type="hidden" name="slug" value={slug} />
 

@@ -88,10 +88,7 @@ async function setupAnswer(slug: string): Promise<Setup> {
   const ownerEmail = `o-${slug}@example.com`;
   await auth.signIn(ownerEmail);
   const ownerSess = (await auth.getSession())!;
-  const group = await createGroup(
-    { name: slug, slug, autoApprove: true },
-    ownerSess.user.id,
-  );
+  const group = await createGroup({ name: slug, slug, autoApprove: true }, ownerSess.user.id);
   const question = await db.question.create({
     data: {
       groupId: group.id,
@@ -187,19 +184,13 @@ describe("PATCH /api/answers/[id]", () => {
 
 describe("DELETE /api/answers/[id]", () => {
   it("returns 401 when unauthenticated", async () => {
-    const res = await DELETE(
-      jsonReq("http://x/api/answers/abc", "DELETE"),
-      ctx("abc"),
-    );
+    const res = await DELETE(jsonReq("http://x/api/answers/abc", "DELETE"), ctx("abc"));
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when answer is unknown", async () => {
     await auth.signIn(`d-${Date.now()}@example.com`);
-    const res = await DELETE(
-      jsonReq("http://x/api/answers/missing", "DELETE"),
-      ctx("missing"),
-    );
+    const res = await DELETE(jsonReq("http://x/api/answers/missing", "DELETE"), ctx("missing"));
     expect(res.status).toBe(404);
   });
 

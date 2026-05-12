@@ -159,9 +159,7 @@ export async function searchContent(opts: SearchOptions): Promise<SearchResultsP
 
   const provider = (process.env["DATABASE_PROVIDER"] ?? "sqlite").toLowerCase();
   const driver: DriverResult =
-    provider === "postgres"
-      ? await runTsvector(resolved, expr)
-      : await runFts5(resolved, expr);
+    provider === "postgres" ? await runTsvector(resolved, expr) : await runFts5(resolved, expr);
 
   const { questionRows, answerRows, questionTotal, answerTotal, toPublicScore } = driver;
   const total = questionTotal + answerTotal;
@@ -251,8 +249,7 @@ export async function searchContent(opts: SearchOptions): Promise<SearchResultsP
 async function runFts5(opts: ResolvedOptions, expr: string): Promise<DriverResult> {
   const { scope, groupIds, page, per, status, range, authorId, sort } = opts;
 
-  const useGroupFilter =
-    (scope === "current" || scope === "selected") && groupIds.length > 0;
+  const useGroupFilter = (scope === "current" || scope === "selected") && groupIds.length > 0;
   const groupFilter = useGroupFilter
     ? Prisma.sql`AND q."groupId" IN (${Prisma.join(groupIds)})`
     : Prisma.empty;
@@ -260,19 +257,11 @@ async function runFts5(opts: ResolvedOptions, expr: string): Promise<DriverResul
   const since = rangeToSince(range);
   const statusFilter = questionStatusClause(status);
 
-  const questionDateFilter = since
-    ? Prisma.sql`AND q."createdAt" > ${since}`
-    : Prisma.empty;
-  const answerDateFilter = since
-    ? Prisma.sql`AND a."createdAt" > ${since}`
-    : Prisma.empty;
+  const questionDateFilter = since ? Prisma.sql`AND q."createdAt" > ${since}` : Prisma.empty;
+  const answerDateFilter = since ? Prisma.sql`AND a."createdAt" > ${since}` : Prisma.empty;
 
-  const questionAuthorFilter = authorId
-    ? Prisma.sql`AND q."authorId" = ${authorId}`
-    : Prisma.empty;
-  const answerAuthorFilter = authorId
-    ? Prisma.sql`AND a."authorId" = ${authorId}`
-    : Prisma.empty;
+  const questionAuthorFilter = authorId ? Prisma.sql`AND q."authorId" = ${authorId}` : Prisma.empty;
+  const answerAuthorFilter = authorId ? Prisma.sql`AND a."authorId" = ${authorId}` : Prisma.empty;
 
   const questionOrder =
     sort === "newest"
@@ -282,9 +271,8 @@ async function runFts5(opts: ResolvedOptions, expr: string): Promise<DriverResul
 
   const fetchLimit = page * per;
 
-  const [questionRows, answerRows, questionTotalRows, answerTotalRows] =
-    await Promise.all([
-      db.$queryRaw<RawQuestionHit[]>(Prisma.sql`
+  const [questionRows, answerRows, questionTotalRows, answerTotalRows] = await Promise.all([
+    db.$queryRaw<RawQuestionHit[]>(Prisma.sql`
         SELECT
           q.id AS question_id,
           q.title AS title,
@@ -307,7 +295,7 @@ async function runFts5(opts: ResolvedOptions, expr: string): Promise<DriverResul
         ${questionOrder}
         LIMIT ${fetchLimit}
       `),
-      db.$queryRaw<RawAnswerHit[]>(Prisma.sql`
+    db.$queryRaw<RawAnswerHit[]>(Prisma.sql`
         SELECT
           a.id AS answer_id,
           a."questionId" AS question_id,
@@ -331,7 +319,7 @@ async function runFts5(opts: ResolvedOptions, expr: string): Promise<DriverResul
         ${answerOrder}
         LIMIT ${fetchLimit}
       `),
-      db.$queryRaw<{ n: number | bigint }[]>(Prisma.sql`
+    db.$queryRaw<{ n: number | bigint }[]>(Prisma.sql`
         SELECT COUNT(*) AS n
         FROM question_fts
         JOIN "Question" q ON q.id = question_fts.id
@@ -344,7 +332,7 @@ async function runFts5(opts: ResolvedOptions, expr: string): Promise<DriverResul
         ${questionDateFilter}
         ${questionAuthorFilter}
       `),
-      db.$queryRaw<{ n: number | bigint }[]>(Prisma.sql`
+    db.$queryRaw<{ n: number | bigint }[]>(Prisma.sql`
         SELECT COUNT(*) AS n
         FROM answer_fts
         JOIN "Answer" a ON a.id = answer_fts.id
@@ -358,7 +346,7 @@ async function runFts5(opts: ResolvedOptions, expr: string): Promise<DriverResul
         ${answerDateFilter}
         ${answerAuthorFilter}
       `),
-    ]);
+  ]);
 
   return {
     questionRows,
@@ -377,26 +365,17 @@ async function runTsvector(opts: ResolvedOptions, expr: string): Promise<DriverR
   void expr;
   const { q, scope, groupIds, page, per, status, range, authorId, sort } = opts;
 
-  const useGroupFilter =
-    (scope === "current" || scope === "selected") && groupIds.length > 0;
+  const useGroupFilter = (scope === "current" || scope === "selected") && groupIds.length > 0;
   const groupFilter = useGroupFilter
     ? Prisma.sql`AND q."groupId" IN (${Prisma.join(groupIds)})`
     : Prisma.empty;
 
   const since = rangeToSince(range);
   const statusFilter = questionStatusClause(status);
-  const questionDateFilter = since
-    ? Prisma.sql`AND q."createdAt" > ${since}`
-    : Prisma.empty;
-  const answerDateFilter = since
-    ? Prisma.sql`AND a."createdAt" > ${since}`
-    : Prisma.empty;
-  const questionAuthorFilter = authorId
-    ? Prisma.sql`AND q."authorId" = ${authorId}`
-    : Prisma.empty;
-  const answerAuthorFilter = authorId
-    ? Prisma.sql`AND a."authorId" = ${authorId}`
-    : Prisma.empty;
+  const questionDateFilter = since ? Prisma.sql`AND q."createdAt" > ${since}` : Prisma.empty;
+  const answerDateFilter = since ? Prisma.sql`AND a."createdAt" > ${since}` : Prisma.empty;
+  const questionAuthorFilter = authorId ? Prisma.sql`AND q."authorId" = ${authorId}` : Prisma.empty;
+  const answerAuthorFilter = authorId ? Prisma.sql`AND a."authorId" = ${authorId}` : Prisma.empty;
 
   const questionOrder =
     sort === "newest"
@@ -409,9 +388,8 @@ async function runTsvector(opts: ResolvedOptions, expr: string): Promise<DriverR
   const tsq = Prisma.sql`plainto_tsquery('english', ${q})`;
   const headlineOpts = "StartSel=<mark>, StopSel=</mark>, MaxWords=24, MinWords=12";
 
-  const [questionRows, answerRows, questionTotalRows, answerTotalRows] =
-    await Promise.all([
-      db.$queryRaw<RawQuestionHit[]>(Prisma.sql`
+  const [questionRows, answerRows, questionTotalRows, answerTotalRows] = await Promise.all([
+    db.$queryRaw<RawQuestionHit[]>(Prisma.sql`
         SELECT
           q.id AS question_id,
           q.title AS title,
@@ -436,7 +414,7 @@ async function runTsvector(opts: ResolvedOptions, expr: string): Promise<DriverR
         ${questionOrder}
         LIMIT ${fetchLimit}
       `),
-      db.$queryRaw<RawAnswerHit[]>(Prisma.sql`
+    db.$queryRaw<RawAnswerHit[]>(Prisma.sql`
         SELECT
           a.id AS answer_id,
           a."questionId" AS question_id,
@@ -459,7 +437,7 @@ async function runTsvector(opts: ResolvedOptions, expr: string): Promise<DriverR
         ${answerOrder}
         LIMIT ${fetchLimit}
       `),
-      db.$queryRaw<{ n: number | bigint }[]>(Prisma.sql`
+    db.$queryRaw<{ n: number | bigint }[]>(Prisma.sql`
         SELECT COUNT(*)::bigint AS n
         FROM "Question" q
         JOIN "Group" g ON g.id = q."groupId"
@@ -471,7 +449,7 @@ async function runTsvector(opts: ResolvedOptions, expr: string): Promise<DriverR
         ${questionDateFilter}
         ${questionAuthorFilter}
       `),
-      db.$queryRaw<{ n: number | bigint }[]>(Prisma.sql`
+    db.$queryRaw<{ n: number | bigint }[]>(Prisma.sql`
         SELECT COUNT(*)::bigint AS n
         FROM "Answer" a
         JOIN "Question" q ON q.id = a."questionId"
@@ -484,7 +462,7 @@ async function runTsvector(opts: ResolvedOptions, expr: string): Promise<DriverR
         ${answerDateFilter}
         ${answerAuthorFilter}
       `),
-    ]);
+  ]);
 
   return {
     questionRows,

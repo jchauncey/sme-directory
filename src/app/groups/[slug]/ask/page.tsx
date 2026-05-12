@@ -1,13 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSession } from "@/lib/auth";
 import { getGroupBySlug } from "@/lib/groups";
 import { getMembership } from "@/lib/memberships";
@@ -32,7 +26,10 @@ export default async function AskQuestionPage({ params }: Props) {
         <CardHeader className="border-b">
           <CardTitle className="text-xl">Ask a question</CardTitle>
           <CardDescription>
-            Posting in <Link href={`/groups/${group.slug}`} className="underline">{group.name}</Link>
+            Posting in{" "}
+            <Link href={`/groups/${group.slug}`} className="underline">
+              {group.name}
+            </Link>
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-4">
@@ -43,11 +40,7 @@ export default async function AskQuestionPage({ params }: Props) {
               <p className="text-sm">
                 You must be an approved member of this group to post a question.
               </p>
-              <Button
-                variant="outline"
-                size="sm"
-                render={<Link href={`/groups/${group.slug}`} />}
-              >
+              <Button variant="outline" size="sm" render={<Link href={`/groups/${group.slug}`} />}>
                 Back to group
               </Button>
             </div>

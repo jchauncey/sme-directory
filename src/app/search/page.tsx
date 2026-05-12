@@ -79,7 +79,10 @@ type CommonUrlState = {
   per: number;
 };
 
-function buildSearchUrl(state: CommonUrlState, overrides: Partial<CommonUrlState & { page: number }>): string {
+function buildSearchUrl(
+  state: CommonUrlState,
+  overrides: Partial<CommonUrlState & { page: number }>,
+): string {
   const merged: CommonUrlState & { page?: number } = { ...state, ...overrides };
   const params = new URLSearchParams();
   if (merged.q) params.set("q", merged.q);
@@ -95,13 +98,7 @@ function buildSearchUrl(state: CommonUrlState, overrides: Partial<CommonUrlState
   return `/search?${params.toString()}`;
 }
 
-function HitCard({
-  hit,
-  authorFilterUrl,
-}: {
-  hit: SearchHit;
-  authorFilterUrl: string;
-}) {
+function HitCard({ hit, authorFilterUrl }: { hit: SearchHit; authorFilterUrl: string }) {
   const titleNode = hit.titleSnippet ? renderSnippet(hit.titleSnippet) : hit.title;
   return (
     <li className="rounded-lg border border-border p-4">
@@ -113,11 +110,7 @@ function HitCard({
           {hit.group.name}
         </Link>
         <span aria-hidden>·</span>
-        <Link
-          href={authorFilterUrl}
-          className="hover:underline"
-          title="Filter by this author"
-        >
+        <Link href={authorFilterUrl} className="hover:underline" title="Filter by this author">
           {authorLabel(hit.author)}
         </Link>
       </div>
@@ -293,9 +286,7 @@ export default async function SearchPage({ searchParams }: Props) {
   const initialAuthor: AuthorOption | null = selectedAuthor
     ? { id: selectedAuthor.id, name: selectedAuthor.name, email: selectedAuthor.email }
     : null;
-  const authorLabelText = selectedAuthor
-    ? (selectedAuthor.name ?? selectedAuthor.email)
-    : null;
+  const authorLabelText = selectedAuthor ? (selectedAuthor.name ?? selectedAuthor.email) : null;
 
   const totalPages = results ? Math.max(Math.ceil(results.total / per), 1) : 1;
   const currentPage = results?.page ?? requestedPage;
@@ -374,18 +365,10 @@ export default async function SearchPage({ searchParams }: Props) {
               ))}
             </ul>
             <div className="flex items-center justify-between">
-              <PageLink
-                to={currentPage - 1}
-                state={urlState}
-                disabled={currentPage <= 1}
-              >
+              <PageLink to={currentPage - 1} state={urlState} disabled={currentPage <= 1}>
                 Previous
               </PageLink>
-              <PageLink
-                to={currentPage + 1}
-                state={urlState}
-                disabled={currentPage >= totalPages}
-              >
+              <PageLink to={currentPage + 1} state={urlState} disabled={currentPage >= totalPages}>
                 Next
               </PageLink>
             </div>

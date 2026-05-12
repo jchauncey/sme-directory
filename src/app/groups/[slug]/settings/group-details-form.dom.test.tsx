@@ -33,24 +33,18 @@ describe("GroupDetailsForm", () => {
       />,
     );
     expect(screen.getByLabelText(/^name$/i)).toHaveValue("My group");
-    expect(screen.getByLabelText(/description/i)).toHaveValue(
-      "An existing description.",
-    );
+    expect(screen.getByLabelText(/description/i)).toHaveValue("An existing description.");
   });
 
   it("renders an empty description textarea when none is set", () => {
-    render(
-      <GroupDetailsForm slug="my-group" initialName="My group" initialDescription={null} />,
-    );
+    render(<GroupDetailsForm slug="my-group" initialName="My group" initialDescription={null} />);
     expect(screen.getByLabelText(/description/i)).toHaveValue("");
   });
 
   it("submits the form data to the server action", async () => {
     mockedAction.mockResolvedValue({ ok: true });
     const user = userEvent.setup();
-    render(
-      <GroupDetailsForm slug="my-group" initialName="Old" initialDescription={null} />,
-    );
+    render(<GroupDetailsForm slug="my-group" initialName="Old" initialDescription={null} />);
 
     const nameInput = screen.getByLabelText(/^name$/i);
     await user.clear(nameInput);
@@ -72,9 +66,7 @@ describe("GroupDetailsForm", () => {
       values: { name: "x", description: "" },
     });
     const user = userEvent.setup();
-    render(
-      <GroupDetailsForm slug="my-group" initialName="Valid" initialDescription={null} />,
-    );
+    render(<GroupDetailsForm slug="my-group" initialName="Valid" initialDescription={null} />);
 
     const nameInput = screen.getByLabelText(/^name$/i);
     await user.clear(nameInput);
@@ -82,9 +74,7 @@ describe("GroupDetailsForm", () => {
     await user.click(screen.getByRole("button", { name: /save changes/i }));
 
     const alerts = await screen.findAllByRole("alert");
-    expect(alerts.some((el) => /at least 2 characters/i.test(el.textContent ?? ""))).toBe(
-      true,
-    );
+    expect(alerts.some((el) => /at least 2 characters/i.test(el.textContent ?? ""))).toBe(true);
     expect(nameInput).toHaveAttribute("aria-invalid", "true");
   });
 
@@ -94,9 +84,7 @@ describe("GroupDetailsForm", () => {
       values: { name: "Hijack", description: "" },
     });
     const user = userEvent.setup();
-    render(
-      <GroupDetailsForm slug="my-group" initialName="Valid" initialDescription={null} />,
-    );
+    render(<GroupDetailsForm slug="my-group" initialName="Valid" initialDescription={null} />);
 
     await user.click(screen.getByRole("button", { name: /save changes/i }));
 

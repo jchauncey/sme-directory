@@ -132,10 +132,7 @@ describe("POST /api/groups/[slug]/questions", () => {
     await auth.signIn(ownerEmail);
     const ownerSess = (await auth.getSession())!;
     const slug = `pending-${Date.now()}`;
-    const group = await createGroup(
-      { name: "P", slug, autoApprove: false },
-      ownerSess.user.id,
-    );
+    const group = await createGroup({ name: "P", slug, autoApprove: false }, ownerSess.user.id);
 
     const applicantEmail = `app-${Date.now()}-${Math.random()}@example.com`;
     cookieStore.clear();
@@ -158,10 +155,7 @@ describe("POST /api/groups/[slug]/questions", () => {
     await auth.signIn(ownerEmail);
     const ownerSess = (await auth.getSession())!;
     const slug = `ok-${Date.now()}`;
-    const group = await createGroup(
-      { name: "OK", slug, autoApprove: true },
-      ownerSess.user.id,
-    );
+    const group = await createGroup({ name: "OK", slug, autoApprove: true }, ownerSess.user.id);
 
     const memberEmail = `m-${Date.now()}-${Math.random()}@example.com`;
     cookieStore.clear();
@@ -210,10 +204,7 @@ describe("GET /api/groups/[slug]/questions", () => {
     await auth.signIn(ownerEmail);
     const ownerSess = (await auth.getSession())!;
     const slug = `glist-${Date.now()}`;
-    const group = await createGroup(
-      { name: "GL", slug, autoApprove: true },
-      ownerSess.user.id,
-    );
+    const group = await createGroup({ name: "GL", slug, autoApprove: true }, ownerSess.user.id);
     await db.question.create({
       data: { groupId: group.id, authorId: ownerSess.user.id, title: "first", body: "b" },
     });
@@ -249,10 +240,7 @@ describe("GET /api/groups/[slug]/questions", () => {
     await auth.signIn(ownerEmail);
     const ownerSess = (await auth.getSession())!;
     const slug = `gdel-${Date.now()}`;
-    const group = await createGroup(
-      { name: "GDel", slug, autoApprove: true },
-      ownerSess.user.id,
-    );
+    const group = await createGroup({ name: "GDel", slug, autoApprove: true }, ownerSess.user.id);
     const visible = await db.question.create({
       data: {
         groupId: group.id,
