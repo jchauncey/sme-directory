@@ -5,7 +5,7 @@ async function signIn(page: Page, email: string): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/account");
+  await expect(page).toHaveURL("/me");
 }
 
 test("home dashboard surfaces favorited groups and recent open questions", async ({ page }) => {

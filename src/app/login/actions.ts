@@ -33,7 +33,7 @@ export async function signInAction(_prev: SignInState, formData: FormData): Prom
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Sign-in failed." };
   }
-  redirect("/account");
+  redirect("/me");
 }
 
 export async function signOutAction(formData: FormData): Promise<void> {

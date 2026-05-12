@@ -5,7 +5,7 @@ async function signIn(page: Page, email: string): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/account");
+  await expect(page).toHaveURL("/me");
 }
 
 // Base UI's Menu radio item doesn't auto-close the menu on select, and its
