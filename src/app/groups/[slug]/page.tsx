@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { GroupAvatar } from "@/components/ui/group-avatar";
+import { MaterialIcon } from "@/components/ui/material-icon";
 import { Pagination } from "@/components/ui/pagination";
 import { getSession } from "@/lib/auth";
 import { viewerFavoritesFor } from "@/lib/favorites";
@@ -56,9 +57,10 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
   const buildQuestionsHref = (p: number): string =>
     p > 1 ? `/groups/${group.slug}?page=${p}` : `/groups/${group.slug}`;
 
-  const isOwner = membership?.role === "owner" && membership.status === "approved";
   const isApproved = membership?.status === "approved";
   const isPending = membership?.status === "pending";
+  const canManageGroup =
+    isApproved && (membership?.role === "owner" || membership?.role === "moderator");
   const mutedTypes = isApproved ? sessionMutedTypes : [];
   const isArchived = group.archivedAt != null;
   const memberLabel = memberCount === 1 ? "1 member" : `${memberCount} members`;
@@ -117,13 +119,15 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
                 initialMutedTypes={mutedTypes}
                 initialFavorited={viewerFavoritedGroups.has(group.id)}
               />
-              {isOwner ? (
+              {canManageGroup ? (
                 <Button
-                  variant="outline"
-                  size="sm"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Group settings"
+                  title="Group settings"
                   render={<Link href={`/groups/${group.slug}/settings`} />}
                 >
-                  Settings
+                  <MaterialIcon name="settings" />
                 </Button>
               ) : null}
             </div>

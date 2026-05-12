@@ -14,6 +14,7 @@ import {
 } from "@/lib/memberships";
 import { ArchiveControls } from "./archive-controls";
 import { AutoApproveToggle } from "./auto-approve-toggle";
+import { GroupDetailsForm } from "./group-details-form";
 import { MembersList, type MembersListItem } from "./members-list";
 import { PendingApplicationsList, type PendingApplicationView } from "./pending-applications-list";
 
@@ -68,6 +69,47 @@ export default async function GroupSettingsPage({ params }: Props) {
           Back to group
         </Button>
       </div>
+
+      {viewerIsOwner ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Group details</CardTitle>
+            <CardDescription>
+              {isArchived
+                ? "Archived groups are read-only. Restore the group to edit its details."
+                : "Update the group name and description. The slug is permanent."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isArchived ? (
+              <dl className="space-y-2 text-sm">
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Name
+                  </dt>
+                  <dd>{group.name}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Description
+                  </dt>
+                  <dd className="whitespace-pre-line">
+                    {group.description ?? (
+                      <span className="text-muted-foreground">No description.</span>
+                    )}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <GroupDetailsForm
+                slug={group.slug}
+                initialName={group.name}
+                initialDescription={group.description}
+              />
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {viewerIsOwner ? (
         <Card>
