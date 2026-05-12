@@ -1,6 +1,7 @@
 import "server-only";
 import { Prisma, type TargetType } from "@prisma/client";
 import { db } from "@/lib/db";
+import { countRecentQuestionsByGroup } from "@/lib/groups";
 import { NotFoundError } from "@/lib/memberships";
 
 export type FavoriteTargetType = TargetType;
@@ -37,6 +38,7 @@ export type FavoritedGroup = {
   description: string | null;
   image: string | null;
   memberCount: number;
+  recentQuestionCount: number;
   archivedAt: Date | null;
   createdAt: Date;
   favoritedAt: Date;
@@ -238,7 +240,7 @@ export async function listFavoriteGroupsForUser(
   if (favRows.length === 0) return [];
 
   const groupIds = favRows.map((r) => r.targetId);
-  const [groupRows, memberCounts] = await Promise.all([
+  const [groupRows, memberCounts, recentByGroupId] = await Promise.all([
     db.group.findMany({
       where: { id: { in: groupIds } },
       select: {
@@ -256,6 +258,7 @@ export async function listFavoriteGroupsForUser(
       where: { groupId: { in: groupIds }, status: "approved" },
       _count: { _all: true },
     }),
+    countRecentQuestionsByGroup(groupIds),
   ]);
 
   const countById = new Map(memberCounts.map((c) => [c.groupId, c._count._all]));
@@ -274,6 +277,7 @@ export async function listFavoriteGroupsForUser(
       archivedAt: g.archivedAt,
       createdAt: g.createdAt,
       memberCount: countById.get(g.id) ?? 0,
+      recentQuestionCount: recentByGroupId.get(g.id) ?? 0,
       favoritedAt: r.createdAt,
     });
   }

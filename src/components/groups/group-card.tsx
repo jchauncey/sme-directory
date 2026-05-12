@@ -38,6 +38,8 @@ export function GroupCard({ group }: { group: GroupListItem }) {
                 <span>
                   {group.memberCount} {memberLabel}
                 </span>
+                {" · "}
+                <span>{group.recentQuestionCount} new in 24h</span>
               </CardDescription>
             </div>
           </div>
