@@ -60,9 +60,29 @@ export type GroupListItem = {
   description: string | null;
   image: string | null;
   memberCount: number;
+  recentQuestionCount: number;
   createdAt: Date;
   archivedAt: Date | null;
 };
+
+const RECENT_QUESTION_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+export async function countRecentQuestionsByGroup(
+  groupIds?: string[],
+): Promise<Map<string, number>> {
+  if (groupIds && groupIds.length === 0) return new Map();
+  const since = new Date(Date.now() - RECENT_QUESTION_WINDOW_MS);
+  const rows = await db.question.groupBy({
+    by: ["groupId"],
+    where: {
+      deletedAt: null,
+      createdAt: { gte: since },
+      ...(groupIds ? { groupId: { in: groupIds } } : {}),
+    },
+    _count: { _all: true },
+  });
+  return new Map(rows.map((r) => [r.groupId, r._count._all]));
+}
 
 export type ListGroupsSort = "newest" | "members";
 
@@ -82,7 +102,7 @@ export async function listGroups(opts: {
   const page = Math.max(opts.page ?? 1, 1);
   const per = Math.min(Math.max(opts.per ?? 20, 1), 50);
   const where = opts.includeArchived ? {} : { archivedAt: null };
-  const [groups, counts] = await Promise.all([
+  const [groups, counts, recentByGroupId] = await Promise.all([
     db.group.findMany({
       where,
       select: {
@@ -100,6 +120,7 @@ export async function listGroups(opts: {
       where: { status: "approved" },
       _count: { _all: true },
     }),
+    countRecentQuestionsByGroup(),
   ]);
 
   const countByGroupId = new Map(counts.map((c) => [c.groupId, c._count._all]));
@@ -113,6 +134,7 @@ export async function listGroups(opts: {
     createdAt: g.createdAt,
     archivedAt: g.archivedAt,
     memberCount: countByGroupId.get(g.id) ?? 0,
+    recentQuestionCount: recentByGroupId.get(g.id) ?? 0,
   }));
 
   if (opts.sort === "members") {
@@ -201,7 +223,7 @@ export async function listGroupsByActivity(
     .slice(0, limit)
     .map(([id]) => id);
 
-  const [groupRows, memberCounts] = await Promise.all([
+  const [groupRows, memberCounts, recentByGroupId] = await Promise.all([
     db.group.findMany({
       where: { id: { in: rankedIds }, archivedAt: null },
       select: {
@@ -219,6 +241,7 @@ export async function listGroupsByActivity(
       where: { groupId: { in: rankedIds }, status: "approved" },
       _count: { _all: true },
     }),
+    countRecentQuestionsByGroup(rankedIds),
   ]);
 
   const countByGroupId = new Map(memberCounts.map((c) => [c.groupId, c._count._all]));
@@ -237,6 +260,7 @@ export async function listGroupsByActivity(
       archivedAt: g.archivedAt,
       createdAt: g.createdAt,
       memberCount: countByGroupId.get(g.id) ?? 0,
+      recentQuestionCount: recentByGroupId.get(g.id) ?? 0,
     });
   }
   return items;

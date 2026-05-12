@@ -224,6 +224,44 @@ describe("listGroups", () => {
     expect(found!.archivedAt).not.toBeNull();
   });
 
+  it("counts recentQuestionCount only for questions created in the last 24h", async () => {
+    const owner = await makeUser("ls-recent");
+    const slug = `ls-recent-${Date.now()}`;
+    const group = await createGroup({ name: "R", slug, autoApprove: true }, owner.id);
+
+    // Fresh question (within 24h) — counts.
+    await db.question.create({
+      data: { groupId: group.id, authorId: owner.id, title: "fresh", body: "x" },
+    });
+    // Stale question (>24h ago) — must not count.
+    const stale = await db.question.create({
+      data: { groupId: group.id, authorId: owner.id, title: "stale", body: "x" },
+    });
+    await db.question.update({
+      where: { id: stale.id },
+      data: { createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000) },
+    });
+    // Soft-deleted recent question — must not count.
+    const del = await db.question.create({
+      data: { groupId: group.id, authorId: owner.id, title: "deleted", body: "x" },
+    });
+    await db.question.update({ where: { id: del.id }, data: { deletedAt: new Date() } });
+
+    const list = (await listGroups({ sort: "newest" })).items;
+    const found = list.find((g) => g.id === group.id);
+    expect(found).toBeDefined();
+    expect(found!.recentQuestionCount).toBe(1);
+  });
+
+  it("returns recentQuestionCount=0 when no recent questions", async () => {
+    const owner = await makeUser("ls-zero");
+    const slug = `ls-zero-${Date.now()}`;
+    const group = await createGroup({ name: "Z", slug }, owner.id);
+    const list = (await listGroups({ sort: "newest" })).items;
+    const found = list.find((g) => g.id === group.id);
+    expect(found?.recentQuestionCount).toBe(0);
+  });
+
   it("respects page boundaries (page 2 returns expected slice)", async () => {
     const owner = await makeUser("ls-page");
     const tag = `ls-page-${Date.now()}`;
@@ -352,6 +390,30 @@ describe("listGroupsByActivity", () => {
 
     const ranked = await listGroupsByActivity(5);
     expect(ranked.find((g) => g.id === group.id)).toBeUndefined();
+  });
+
+  it("populates recentQuestionCount on returned items", async () => {
+    const owner = await makeUser("act-recent-owner");
+    const slug = `act-recent-${Date.now()}`;
+    const group = await createGroup({ name: "AR", slug, autoApprove: true }, owner.id);
+    await db.question.create({
+      data: { groupId: group.id, authorId: owner.id, title: "fresh1", body: "x" },
+    });
+    await db.question.create({
+      data: { groupId: group.id, authorId: owner.id, title: "fresh2", body: "x" },
+    });
+    const stale = await db.question.create({
+      data: { groupId: group.id, authorId: owner.id, title: "old", body: "x" },
+    });
+    await db.question.update({
+      where: { id: stale.id },
+      data: { createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000) },
+    });
+
+    const ranked = await listGroupsByActivity(5);
+    const found = ranked.find((g) => g.id === group.id);
+    expect(found).toBeDefined();
+    expect(found!.recentQuestionCount).toBe(2);
   });
 
   it("falls back to member-count sort when no group has activity in the window", async () => {
