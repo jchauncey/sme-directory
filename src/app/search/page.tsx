@@ -15,6 +15,7 @@ import {
 import { getUserSummaryById } from "@/lib/users";
 import { searchQuerySchema } from "@/lib/validation/search";
 
+import { RANGE_LABEL, SORT_LABEL, STATUS_LABEL } from "./labels";
 import { applyGroupSlugDefault } from "./normalize";
 import { SearchControls, type AuthorOption, type MyGroup } from "./search-controls";
 
@@ -133,24 +134,6 @@ function HitCard({
   );
 }
 
-const STATUS_LABEL: Record<SearchStatus, string> = {
-  all: "All",
-  answered: "Answered",
-  unanswered: "Unanswered",
-};
-
-const RANGE_LABEL: Record<SearchRange, string> = {
-  all: "Any time",
-  week: "Past week",
-  month: "Past month",
-  year: "Past year",
-};
-
-const SORT_LABEL: Record<SearchSort, string> = {
-  relevance: "Relevance",
-  newest: "Newest",
-};
-
 function ActiveFilters({
   state,
   authorLabelText,
@@ -173,18 +156,18 @@ function ActiveFilters({
       clearUrl: buildSearchUrl(state, { range: "all", page: 1 }),
     });
   }
-  if (state.authorId && authorLabelText) {
-    chips.push({
-      key: "author",
-      label: `Author: ${authorLabelText}`,
-      clearUrl: buildSearchUrl(state, { authorId: undefined, page: 1 }),
-    });
-  }
   if (state.sort !== "relevance") {
     chips.push({
       key: "sort",
       label: `Sort: ${SORT_LABEL[state.sort]}`,
       clearUrl: buildSearchUrl(state, { sort: "relevance", page: 1 }),
+    });
+  }
+  if (state.authorId && authorLabelText) {
+    chips.push({
+      key: "author",
+      label: `Author: ${authorLabelText}`,
+      clearUrl: buildSearchUrl(state, { authorId: undefined, page: 1 }),
     });
   }
 

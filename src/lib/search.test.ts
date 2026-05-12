@@ -40,9 +40,14 @@ describe.skipIf(isPostgres)("toFtsMatchExpr", () => {
   it("strips FTS syntax characters and prefix-matches the trailing token", () => {
     expect(toFtsMatchExpr("rust")).toBe('"rust"*');
     expect(toFtsMatchExpr("how to rust")).toBe('"how" AND "to" AND "rust"*');
-    // Special chars are stripped per token.
     expect(toFtsMatchExpr('rust*())"')).toBe('"rust"*');
-    expect(toFtsMatchExpr("foo:bar baz-qux")).toBe('"foobar" AND "bazqux"*');
+    // Non-alphanumeric runs split a "word" into separate tokens rather than
+    // smushing the surrounding characters together, so queries like
+    // "net/http" find docs containing both words.
+    expect(toFtsMatchExpr("foo:bar baz-qux")).toBe(
+      '"foo" AND "bar" AND "baz" AND "qux"*',
+    );
+    expect(toFtsMatchExpr("net/http")).toBe('"net" AND "http"*');
   });
 });
 
