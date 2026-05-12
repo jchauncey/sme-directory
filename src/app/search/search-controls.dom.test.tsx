@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -70,15 +70,20 @@ describe("SearchControls", () => {
     expect(lastUrl).toMatch(/[?&]scope=all(&|$)/);
   });
 
-  it("emits a status filter when a status toggle is pressed", async () => {
+  it("emits a status filter when a status option is picked from the dropdown", async () => {
     const user = userEvent.setup();
     render(<SearchControls {...baseProps} />);
 
-    const statusGroup = screen.getByRole("group", {
-      name: "Filter by question status",
+    const trigger = screen.getByRole("button", {
+      name: /Filter by question status/i,
     });
+    // Accessible name must include the current value so screen readers can
+    // announce it without opening the menu.
+    expect(trigger).toHaveAccessibleName(/currently All/i);
+
+    await user.click(trigger);
     await user.click(
-      within(statusGroup).getByRole("button", { name: "Answered" }),
+      await screen.findByRole("menuitemradio", { name: "Answered" }),
     );
 
     await waitFor(() => {
@@ -86,6 +91,31 @@ describe("SearchControls", () => {
     });
     const lastUrl = replace.mock.calls.at(-1)?.[0] as string;
     expect(lastUrl).toMatch(/[?&]status=answered(&|$)/);
+  });
+
+  it("emits range and sort filters when their dropdowns are used", async () => {
+    const user = userEvent.setup();
+    render(<SearchControls {...baseProps} />);
+
+    await user.click(
+      screen.getByRole("button", { name: /Filter by date range/i }),
+    );
+    await user.click(
+      await screen.findByRole("menuitemradio", { name: "Past week" }),
+    );
+    await waitFor(() => {
+      const last = replace.mock.calls.at(-1)?.[0] as string | undefined;
+      expect(last).toMatch(/[?&]range=week(&|$)/);
+    });
+
+    await user.click(screen.getByRole("button", { name: /Sort results/i }));
+    await user.click(
+      await screen.findByRole("menuitemradio", { name: "Newest" }),
+    );
+    await waitFor(() => {
+      const last = replace.mock.calls.at(-1)?.[0] as string | undefined;
+      expect(last).toMatch(/[?&]sort=newest(&|$)/);
+    });
   });
 
   it("debounces the author typeahead and queries the search API", async () => {

@@ -74,8 +74,10 @@ function resolveOptions(opts: SearchOptions): ResolvedOptions {
 
 /**
  * Convert a free-form user query into a safe FTS5 MATCH expression.
- * - Lowercases, splits on whitespace.
- * - Strips characters FTS5 treats as syntax (`"`, `*`, `:`, parens, `-`, etc.).
+ * - Lowercases, splits on any run of non-letter/non-digit characters.
+ *   This treats `/`, `:`, `-`, `"`, `*`, parens etc. as separators rather than
+ *   smushing the surrounding text together (so `net/http` tokenizes as
+ *   `net` + `http`, not `nethttp`).
  * - Wraps each remaining token in double quotes and ANDs them together.
  * - Appends `*` to the final token for prefix matching.
  *
@@ -85,8 +87,7 @@ function resolveOptions(opts: SearchOptions): ResolvedOptions {
 export function toFtsMatchExpr(q: string): string | null {
   const tokens = q
     .toLowerCase()
-    .split(/\s+/)
-    .map((t) => t.replace(/[^\p{L}\p{N}]+/gu, ""))
+    .split(/[^\p{L}\p{N}]+/u)
     .filter((t) => t.length > 0);
   if (tokens.length === 0) return null;
   const quoted = tokens.map((t) => `"${t}"`);

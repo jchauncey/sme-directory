@@ -1,11 +1,21 @@
 "use client";
 
+import { ChevronDownIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import type { SearchRange, SearchSort, SearchStatus } from "@/lib/search";
+
+import { RANGE_LABEL, SORT_LABEL, STATUS_LABEL } from "./labels";
 
 const DEBOUNCE_MS = 250;
 const AUTHOR_DEBOUNCE_MS = 200;
@@ -68,7 +78,16 @@ export function SearchControls({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const myGroupIds = useMemo(() => myGroups.map((g) => g.id), [myGroups]);
+  // Value-stable key so reference churn of `myGroups` from RSC re-renders
+  // doesn't refire the URL-sync effect on every server response.
+  const myGroupIdsKey = useMemo(
+    () => myGroups.map((g) => g.id).join(","),
+    [myGroups],
+  );
+  const myGroupIds = useMemo(
+    () => (myGroupIdsKey ? myGroupIdsKey.split(",") : []),
+    [myGroupIdsKey],
+  );
 
   const [q, setQ] = useState(initialQ);
   const [surfaceScope, setSurfaceScope] = useState<ScopeOption>(() =>
@@ -243,54 +262,41 @@ export function SearchControls({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-muted-foreground">Status</span>
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by question status">
-          <ToggleButton pressed={status === "all"} onClick={() => setStatus("all")}>
-            All
-          </ToggleButton>
-          <ToggleButton pressed={status === "answered"} onClick={() => setStatus("answered")}>
-            Answered
-          </ToggleButton>
-          <ToggleButton pressed={status === "unanswered"} onClick={() => setStatus("unanswered")}>
-            Unanswered
-          </ToggleButton>
-        </div>
+        <FilterDropdown
+          label="Status"
+          ariaLabel="Filter by question status"
+          value={status}
+          onValueChange={(v) => setStatus(v as SearchStatus)}
+          options={[
+            { value: "all", label: STATUS_LABEL.all },
+            { value: "answered", label: STATUS_LABEL.answered },
+            { value: "unanswered", label: STATUS_LABEL.unanswered },
+          ]}
+        />
+        <FilterDropdown
+          label="Date"
+          ariaLabel="Filter by date range"
+          value={range}
+          onValueChange={(v) => setRange(v as SearchRange)}
+          options={[
+            { value: "all", label: RANGE_LABEL.all },
+            { value: "week", label: RANGE_LABEL.week },
+            { value: "month", label: RANGE_LABEL.month },
+            { value: "year", label: RANGE_LABEL.year },
+          ]}
+        />
+        <FilterDropdown
+          label="Sort"
+          ariaLabel="Sort results"
+          value={sort}
+          onValueChange={(v) => setSort(v as SearchSort)}
+          options={[
+            { value: "relevance", label: SORT_LABEL.relevance },
+            { value: "newest", label: SORT_LABEL.newest },
+          ]}
+        />
+        <AuthorPicker author={author} onChange={setAuthor} />
       </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-muted-foreground">Date</span>
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by date range">
-          <ToggleButton pressed={range === "all"} onClick={() => setRange("all")}>
-            Any time
-          </ToggleButton>
-          <ToggleButton pressed={range === "week"} onClick={() => setRange("week")}>
-            Past week
-          </ToggleButton>
-          <ToggleButton pressed={range === "month"} onClick={() => setRange("month")}>
-            Past month
-          </ToggleButton>
-          <ToggleButton pressed={range === "year"} onClick={() => setRange("year")}>
-            Past year
-          </ToggleButton>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-muted-foreground">Sort</span>
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Sort results">
-          <ToggleButton pressed={sort === "relevance"} onClick={() => setSort("relevance")}>
-            Relevance
-          </ToggleButton>
-          <ToggleButton pressed={sort === "newest"} onClick={() => setSort("newest")}>
-            Newest
-          </ToggleButton>
-        </div>
-      </div>
-
-      <AuthorPicker
-        author={author}
-        onChange={setAuthor}
-      />
     </div>
   );
 }
@@ -414,6 +420,43 @@ function AuthorPicker({
         ) : null}
       </div>
     </div>
+  );
+}
+
+function FilterDropdown({
+  label,
+  ariaLabel,
+  value,
+  onValueChange,
+  options,
+}: {
+  label: string;
+  ariaLabel: string;
+  value: string;
+  onValueChange: (next: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  const current = options.find((o) => o.value === value)?.label ?? options[0]?.label ?? "";
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button variant="outline" size="sm" />}
+        aria-label={`${ariaLabel}, currently ${current}`}
+      >
+        <span className="text-muted-foreground">{label}:</span>
+        <span className="ml-1 font-medium">{current}</span>
+        <ChevronDownIcon className="ml-1 size-3.5 text-muted-foreground" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuRadioGroup value={value} onValueChange={onValueChange}>
+          {options.map((o) => (
+            <DropdownMenuRadioItem key={o.value} value={o.value}>
+              {o.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
