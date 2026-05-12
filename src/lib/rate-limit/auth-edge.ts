@@ -1,8 +1,8 @@
 /**
- * Edge-safe session reading for the rate-limit middleware.
+ * Edge-safe session reading for the rate-limit proxy.
  *
  * Mirrors `readToken` from `@/lib/auth` but without `server-only`, Prisma, or
- * `next/headers` so it can be imported from `src/middleware.ts`.
+ * `next/headers` so it can be imported from `src/proxy.ts`.
  */
 
 import { jwtVerify } from "jose";

@@ -4,7 +4,7 @@
  * - Server actions call `assertRateLimitForAction(group)` at the top of the
  *   handler; over-limit throws `RateLimitError(retryAfterMs)`, which the
  *   action catches and surfaces in its existing form-state shape.
- * - The middleware calls `applyRateLimitToApiRequest(req)` to enforce limits
+ * - The proxy calls `applyRateLimitToApiRequest(req)` to enforce limits
  *   on mutating `/api/*` requests before they reach the route handler.
  *
  * The store backend is selected via `getStore()`. In dev/test it is the

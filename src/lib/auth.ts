@@ -75,7 +75,7 @@ async function writeSessionCookie(session: Session): Promise<void> {
     maxAge: SESSION_MAX_AGE_SECONDS,
   });
   // Issue a fresh CSRF token alongside the session so the double-submit cookie
-  // is rotated on every sign-in (the middleware also issues one for anonymous
+  // is rotated on every sign-in (the proxy also issues one for anonymous
   // visits, but we rotate here so a recycled browser starts a clean session).
   store.set(CSRF_COOKIE, generateCsrfToken(), {
     httpOnly: false,

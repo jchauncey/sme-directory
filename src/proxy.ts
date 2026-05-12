@@ -11,7 +11,7 @@ import { applyRateLimitToApiRequest } from "@/lib/rate-limit";
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
 /**
- * Edge middleware combining rate-limiting and CSRF protection.
+ * Edge proxy combining rate-limiting and CSRF protection.
  *
  * Order is intentional:
  *   1. Rate-limit mutating `/api/*` requests FIRST. Brute-force probes that
@@ -22,7 +22,7 @@ const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
  *   3. For all other requests (including non-`/api/*` GETs) we issue a fresh
  *      `sme_csrf` cookie when one is missing so subsequent forms can echo it.
  */
-export async function middleware(req: NextRequest): Promise<NextResponse | Response> {
+export async function proxy(req: NextRequest): Promise<NextResponse | Response> {
   const isMutatingApi = csrfRequiresCheck(req.method, req.nextUrl.pathname);
 
   if (isMutatingApi) {

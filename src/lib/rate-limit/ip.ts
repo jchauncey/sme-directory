@@ -125,7 +125,7 @@ export function clientIpFromHeaders(headers: {
 /**
  * Extract the best-available client IP from a `NextRequest`.
  *
- * Used by `applyRateLimitToApiRequest` (middleware).
+ * Used by `applyRateLimitToApiRequest` (proxy).
  * Falls back to `req.ip` when header-based extraction yields nothing.
  */
 export function clientIpFromRequest(req: NextRequest): string {
