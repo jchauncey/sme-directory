@@ -66,7 +66,6 @@ export function UserMenu() {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem render={<Link href="/me" />}>Your profile</DropdownMenuItem>
-        <DropdownMenuItem render={<Link href="/account" />}>Account</DropdownMenuItem>
         <DropdownMenuSeparator />
         <form action={signOutAction}>
           <CsrfField />
