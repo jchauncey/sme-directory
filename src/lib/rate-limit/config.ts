@@ -55,7 +55,7 @@ export const LIMITS: Record<LimitGroup, LimitConfig> = {
  * workflows.
  *
  * Path matching is intentionally conservative: GETs/HEADs are never rate
- * limited at the middleware layer, and routes that are already gated by
+ * limited at the proxy layer, and routes that are already gated by
  * server-action `assertRateLimitForAction` calls don't need a second pass.
  */
 export function groupForApiPath(pathname: string): LimitGroup | null {

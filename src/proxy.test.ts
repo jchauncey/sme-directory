@@ -1,7 +1,7 @@
 /**
- * Middleware tests.
+ * Proxy tests.
  *
- * The middleware enforces two cross-cutting policies:
+ * The proxy enforces two cross-cutting policies:
  *   1. Rate limiting on mutating `/api/*` requests (issue #51).
  *   2. CSRF (double-submit cookie) on the same paths (issue #50).
  *
@@ -10,7 +10,7 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { NextRequest, type NextResponse } from "next/server";
-import { middleware } from "./middleware";
+import { proxy } from "./proxy";
 import { CSRF_COOKIE, CSRF_HEADER, generateCsrfToken } from "@/lib/csrf";
 import { LIMITS, __resetStoreForTests } from "@/lib/rate-limit";
 
@@ -39,9 +39,9 @@ function makeRequest(opts: {
   return new NextRequest(url, { method: opts.method, headers });
 }
 
-describe("middleware CSRF enforcement on /api/*", () => {
+describe("proxy CSRF enforcement on /api/*", () => {
   it("returns 403 when both cookie and header are missing on POST", async () => {
-    const res = await middleware(makeRequest({ method: "POST", path: "/api/favorites" }));
+    const res = await proxy(makeRequest({ method: "POST", path: "/api/favorites" }));
     expect(res.status).toBe(403);
     const body = await res.json();
     expect(body.error).toBe("CsrfFailed");
@@ -49,7 +49,7 @@ describe("middleware CSRF enforcement on /api/*", () => {
 
   it("returns 403 when only the header is missing", async () => {
     const token = generateCsrfToken();
-    const res = await middleware(
+    const res = await proxy(
       makeRequest({
         method: "POST",
         path: "/api/favorites",
@@ -61,7 +61,7 @@ describe("middleware CSRF enforcement on /api/*", () => {
 
   it("returns 403 when only the cookie is missing", async () => {
     const token = generateCsrfToken();
-    const res = await middleware(
+    const res = await proxy(
       makeRequest({
         method: "POST",
         path: "/api/favorites",
@@ -72,7 +72,7 @@ describe("middleware CSRF enforcement on /api/*", () => {
   });
 
   it("returns 403 when header and cookie do not match", async () => {
-    const res = await middleware(
+    const res = await proxy(
       makeRequest({
         method: "POST",
         path: "/api/favorites",
@@ -85,7 +85,7 @@ describe("middleware CSRF enforcement on /api/*", () => {
 
   it("returns 403 when the header is malformed", async () => {
     const token = generateCsrfToken();
-    const res = await middleware(
+    const res = await proxy(
       makeRequest({
         method: "POST",
         path: "/api/favorites",
@@ -100,7 +100,7 @@ describe("middleware CSRF enforcement on /api/*", () => {
     "passes through %s when token matches",
     async (method) => {
       const token = generateCsrfToken();
-      const res = await middleware(
+      const res = await proxy(
         makeRequest({
           method,
           path: "/api/favorites",
@@ -117,9 +117,9 @@ describe("middleware CSRF enforcement on /api/*", () => {
   );
 });
 
-describe("middleware CSRF token issuance", () => {
+describe("proxy CSRF token issuance", () => {
   it("issues a fresh sme_csrf cookie on a non-mutating request without one", async () => {
-    const res = (await middleware(
+    const res = (await proxy(
       makeRequest({ method: "GET", path: "/" }),
     )) as NextResponse;
     const setCookie = res.cookies.get(CSRF_COOKIE);
@@ -130,26 +130,26 @@ describe("middleware CSRF token issuance", () => {
   });
 
   it("does not rotate the cookie when one already exists", async () => {
-    const res = (await middleware(
+    const res = (await proxy(
       makeRequest({ method: "GET", path: "/groups", cookieToken: generateCsrfToken() }),
     )) as NextResponse;
     expect(res.cookies.get(CSRF_COOKIE)).toBeUndefined();
   });
 
   it("does not validate the token on non-/api/ POSTs (server actions)", async () => {
-    const res = await middleware(
+    const res = await proxy(
       makeRequest({ method: "POST", path: "/me", cookieToken: generateCsrfToken() }),
     );
     expect(res.status).toBe(200);
   });
 
   it("does not validate the token on /api/ GETs", async () => {
-    const res = await middleware(makeRequest({ method: "GET", path: "/api/notifications" }));
+    const res = await proxy(makeRequest({ method: "GET", path: "/api/notifications" }));
     expect(res.status).toBe(200);
   });
 });
 
-describe("middleware rate limiting on mutating /api/* routes", () => {
+describe("proxy rate limiting on mutating /api/* routes", () => {
   function mutatingRequest(path: string, ip: string): NextRequest {
     const token = generateCsrfToken();
     return makeRequest({
@@ -164,7 +164,7 @@ describe("middleware rate limiting on mutating /api/* routes", () => {
   it("allows up to capacity requests on a mutating /api/* route", async () => {
     const capacity = LIMITS.questions.capacity;
     for (let i = 0; i < capacity; i += 1) {
-      const res = await middleware(
+      const res = await proxy(
         mutatingRequest("/api/groups/foo/membership/u-1", "10.0.0.1"),
       );
       expect(res.status).not.toBe(429);
@@ -174,9 +174,9 @@ describe("middleware rate limiting on mutating /api/* routes", () => {
   it("returns 429 with Retry-After once the bucket is empty", async () => {
     const capacity = LIMITS.questions.capacity;
     for (let i = 0; i < capacity; i += 1) {
-      await middleware(mutatingRequest("/api/groups/foo/membership/u-1", "10.0.0.2"));
+      await proxy(mutatingRequest("/api/groups/foo/membership/u-1", "10.0.0.2"));
     }
-    const res = await middleware(
+    const res = await proxy(
       mutatingRequest("/api/groups/foo/membership/u-1", "10.0.0.2"),
     );
     expect(res.status).toBe(429);
@@ -189,7 +189,7 @@ describe("middleware rate limiting on mutating /api/* routes", () => {
 
   it("does not rate-limit GET requests", async () => {
     for (let i = 0; i < LIMITS.votes.capacity * 2; i += 1) {
-      const res = await middleware(
+      const res = await proxy(
         makeRequest({
           method: "GET",
           path: "/api/votes",
@@ -203,12 +203,12 @@ describe("middleware rate limiting on mutating /api/* routes", () => {
   it("scopes buckets by IP for unauthenticated requests", async () => {
     const capacity = LIMITS.votes.capacity;
     for (let i = 0; i < capacity; i += 1) {
-      await middleware(mutatingRequest("/api/votes", "1.1.1.1"));
+      await proxy(mutatingRequest("/api/votes", "1.1.1.1"));
     }
-    const blocked = await middleware(mutatingRequest("/api/votes", "1.1.1.1"));
+    const blocked = await proxy(mutatingRequest("/api/votes", "1.1.1.1"));
     expect(blocked.status).toBe(429);
     // A different IP has its own bucket.
-    const fresh = await middleware(mutatingRequest("/api/votes", "1.1.1.2"));
+    const fresh = await proxy(mutatingRequest("/api/votes", "1.1.1.2"));
     expect(fresh.status).not.toBe(429);
   });
 
@@ -218,7 +218,7 @@ describe("middleware rate limiting on mutating /api/* routes", () => {
     // 403, proving rate-limit ran first.
     const capacity = LIMITS.questions.capacity;
     for (let i = 0; i < capacity; i += 1) {
-      const res = await middleware(
+      const res = await proxy(
         makeRequest({
           method: "POST",
           path: "/api/groups/foo/membership/u-1",
@@ -227,7 +227,7 @@ describe("middleware rate limiting on mutating /api/* routes", () => {
       );
       expect(res.status).toBe(403);
     }
-    const res = await middleware(
+    const res = await proxy(
       makeRequest({
         method: "POST",
         path: "/api/groups/foo/membership/u-1",
