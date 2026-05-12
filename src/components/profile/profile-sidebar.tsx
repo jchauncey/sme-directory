@@ -16,15 +16,6 @@ const items: Item[] = [
   { href: "/me", label: "Overview", exact: true },
   { href: "/me/questions", label: "Questions" },
   { href: "/me/answers", label: "Answers" },
-  {
-    label: "Favorites",
-    matchPrefix: "/me/favorites",
-    children: [
-      { href: "/me/favorites/questions", label: "Questions" },
-      { href: "/me/favorites/answers", label: "Answers" },
-      { href: "/me/favorites/groups", label: "Groups" },
-    ],
-  },
   { href: "/me/groups", label: "Groups" },
   { href: "/me/settings", label: "Settings" },
   { href: "/me/notification-settings", label: "Notification settings" },
