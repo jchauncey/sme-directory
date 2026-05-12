@@ -6,11 +6,7 @@ type Props = {
   "aria-hidden"?: boolean;
 };
 
-export function MaterialIcon({
-  name,
-  className,
-  "aria-hidden": ariaHidden = true,
-}: Props) {
+export function MaterialIcon({ name, className, "aria-hidden": ariaHidden = true }: Props) {
   return (
     <span
       className={cn(

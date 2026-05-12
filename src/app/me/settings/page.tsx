@@ -1,11 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AvatarUploadForm } from "@/components/avatar/avatar-upload-form";
 import { CsrfField } from "@/components/csrf-field";
 import { signOutAction } from "@/app/login/actions";

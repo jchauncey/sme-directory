@@ -7,11 +7,7 @@ import {
   isCategory,
 } from "@/lib/notification-categories";
 
-export {
-  NOTIFICATION_CATEGORIES,
-  isCategory,
-  categoryFor,
-} from "@/lib/notification-categories";
+export { NOTIFICATION_CATEGORIES, isCategory, categoryFor } from "@/lib/notification-categories";
 export type { NotificationCategory } from "@/lib/notification-categories";
 
 function parseMutedTypes(raw: string): NotificationCategory[] {

@@ -1,11 +1,5 @@
 import { notFound } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarkdownBody } from "@/components/markdown-body";
 import { Pagination } from "@/components/ui/pagination";
 import { ProfileAnswerList } from "@/components/profile/profile-answer-list";
@@ -87,10 +81,7 @@ export default async function PublicProfilePage({ params, searchParams }: Props)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pt-4">
-          <ProfileQuestionList
-            items={questions.items}
-            emptyState="No questions yet."
-          />
+          <ProfileQuestionList items={questions.items} emptyState="No questions yet." />
           <Pagination
             currentPage={qPage}
             totalPages={qTotalPages}
@@ -107,10 +98,7 @@ export default async function PublicProfilePage({ params, searchParams }: Props)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pt-4">
-          <ProfileAnswerList
-            items={answers.items}
-            emptyState="No answers yet."
-          />
+          <ProfileAnswerList items={answers.items} emptyState="No answers yet." />
           <Pagination
             currentPage={aPage}
             totalPages={aTotalPages}

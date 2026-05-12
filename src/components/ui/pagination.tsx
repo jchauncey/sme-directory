@@ -10,22 +10,14 @@ type Props = {
   label?: string;
 };
 
-export function Pagination({
-  currentPage,
-  totalPages,
-  buildHref,
-  label = "Pagination",
-}: Props) {
+export function Pagination({ currentPage, totalPages, buildHref, label = "Pagination" }: Props) {
   if (totalPages <= 1) return null;
 
   const prevDisabled = currentPage <= 1;
   const nextDisabled = currentPage >= totalPages;
 
   return (
-    <nav
-      aria-label={label}
-      className="flex items-center justify-between gap-3 pt-2"
-    >
+    <nav aria-label={label} className="flex items-center justify-between gap-3 pt-2">
       <PageButton href={buildHref(currentPage - 1)} disabled={prevDisabled}>
         Previous
       </PageButton>

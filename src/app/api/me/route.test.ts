@@ -108,9 +108,7 @@ describe("PATCH /api/me", () => {
     const res = await PATCH(jsonReq({ name: "   ", bio: "hi" }));
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(
-      json.issues?.some((i: { path: string[] }) => i.path.includes("name")),
-    ).toBe(true);
+    expect(json.issues?.some((i: { path: string[] }) => i.path.includes("name"))).toBe(true);
   });
 
   it("returns 400 when name is missing", async () => {
@@ -121,21 +119,15 @@ describe("PATCH /api/me", () => {
 
   it("returns 400 when bio exceeds 1000 chars", async () => {
     await signInFresh(`long-bio-${Date.now()}@example.com`);
-    const res = await PATCH(
-      jsonReq({ name: "Alice", bio: "x".repeat(1001) }),
-    );
+    const res = await PATCH(jsonReq({ name: "Alice", bio: "x".repeat(1001) }));
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(
-      json.issues?.some((i: { path: string[] }) => i.path.includes("bio")),
-    ).toBe(true);
+    expect(json.issues?.some((i: { path: string[] }) => i.path.includes("bio"))).toBe(true);
   });
 
   it("returns 200 and updates name + bio for the authed user", async () => {
     const userId = await signInFresh(`happy-${Date.now()}@example.com`);
-    const res = await PATCH(
-      jsonReq({ name: "Alice Example", bio: "Hello **world**." }),
-    );
+    const res = await PATCH(jsonReq({ name: "Alice Example", bio: "Hello **world**." }));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.user.id).toBe(userId);
@@ -178,9 +170,7 @@ describe("PATCH /api/me", () => {
 
   it("trims whitespace around name and bio", async () => {
     const userId = await signInFresh(`trim-${Date.now()}@example.com`);
-    const res = await PATCH(
-      jsonReq({ name: "  Carol  ", bio: "  short bio  " }),
-    );
+    const res = await PATCH(jsonReq({ name: "  Carol  ", bio: "  short bio  " }));
     expect(res.status).toBe(200);
 
     const row = await db.user.findUnique({ where: { id: userId } });

@@ -16,12 +16,8 @@ process.env["DATABASE_URL"] = `file:${testDbPath}`;
 const { db } = await import("./db");
 const { createGroup } = await import("./groups");
 const { NotFoundError } = await import("./memberships");
-const {
-  toggleFavorite,
-  viewerFavoritesFor,
-  listFavoritesForUser,
-  listFavoriteGroupsForUser,
-} = await import("./favorites");
+const { toggleFavorite, viewerFavoritesFor, listFavoritesForUser, listFavoriteGroupsForUser } =
+  await import("./favorites");
 
 beforeAll(async () => {
   const root = path.resolve(import.meta.dirname, "../..");
@@ -56,10 +52,7 @@ async function makeUser(label: string) {
 
 async function setupGroupWithQuestion() {
   const author = await makeUser("author");
-  const group = await createGroup(
-    { name: "G", slug: uniq("g"), autoApprove: true },
-    author.id,
-  );
+  const group = await createGroup({ name: "G", slug: uniq("g"), autoApprove: true }, author.id);
   const question = await db.question.create({
     data: {
       groupId: group.id,
@@ -76,10 +69,7 @@ describe("toggleFavorite on questions", () => {
     const { question } = await setupGroupWithQuestion();
     const user = await makeUser("fav");
 
-    const result = await toggleFavorite(
-      { targetType: "question", targetId: question.id },
-      user.id,
-    );
+    const result = await toggleFavorite({ targetType: "question", targetId: question.id }, user.id);
 
     expect(result.favorited).toBe(true);
     expect(result.targetType).toBe("question");
@@ -102,10 +92,7 @@ describe("toggleFavorite on questions", () => {
     const user = await makeUser("fav-off");
 
     await toggleFavorite({ targetType: "question", targetId: question.id }, user.id);
-    const second = await toggleFavorite(
-      { targetType: "question", targetId: question.id },
-      user.id,
-    );
+    const second = await toggleFavorite({ targetType: "question", targetId: question.id }, user.id);
 
     expect(second.favorited).toBe(false);
 
@@ -143,10 +130,7 @@ describe("toggleFavorite on questions", () => {
   it("throws NotFoundError for unknown question id", async () => {
     const user = await makeUser("nf");
     await expect(
-      toggleFavorite(
-        { targetType: "question", targetId: "does-not-exist" },
-        user.id,
-      ),
+      toggleFavorite({ targetType: "question", targetId: "does-not-exist" }, user.id),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 });
@@ -163,10 +147,7 @@ describe("toggleFavorite on answers", () => {
     });
 
     const user = await makeUser("a-fav");
-    const result = await toggleFavorite(
-      { targetType: "answer", targetId: answer.id },
-      user.id,
-    );
+    const result = await toggleFavorite({ targetType: "answer", targetId: answer.id }, user.id);
 
     expect(result.favorited).toBe(true);
     expect(result.targetType).toBe("answer");
@@ -182,20 +163,14 @@ describe("toggleFavorite on answers", () => {
       data: { questionId: question.id, authorId: answerer.id, body: "mine" },
     });
 
-    const result = await toggleFavorite(
-      { targetType: "answer", targetId: answer.id },
-      answerer.id,
-    );
+    const result = await toggleFavorite({ targetType: "answer", targetId: answer.id }, answerer.id);
     expect(result.favorited).toBe(true);
   });
 
   it("throws NotFoundError for unknown answer id", async () => {
     const user = await makeUser("a-nf");
     await expect(
-      toggleFavorite(
-        { targetType: "answer", targetId: "does-not-exist" },
-        user.id,
-      ),
+      toggleFavorite({ targetType: "answer", targetId: "does-not-exist" }, user.id),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 });
@@ -296,16 +271,10 @@ describe("listFavoritesForUser", () => {
 describe("toggleFavorite on groups", () => {
   it("creates a favorite on a group", async () => {
     const owner = await makeUser("g-owner");
-    const group = await createGroup(
-      { name: "G", slug: uniq("g"), autoApprove: true },
-      owner.id,
-    );
+    const group = await createGroup({ name: "G", slug: uniq("g"), autoApprove: true }, owner.id);
     const user = await makeUser("g-fav");
 
-    const result = await toggleFavorite(
-      { targetType: "group", targetId: group.id },
-      user.id,
-    );
+    const result = await toggleFavorite({ targetType: "group", targetId: group.id }, user.id);
 
     expect(result.favorited).toBe(true);
     expect(result.targetType).toBe("group");
@@ -325,16 +294,10 @@ describe("toggleFavorite on groups", () => {
 
   it("toggles off on second call", async () => {
     const owner = await makeUser("g-owner-2");
-    const group = await createGroup(
-      { name: "G2", slug: uniq("g2"), autoApprove: true },
-      owner.id,
-    );
+    const group = await createGroup({ name: "G2", slug: uniq("g2"), autoApprove: true }, owner.id);
     const user = await makeUser("g-fav-2");
     await toggleFavorite({ targetType: "group", targetId: group.id }, user.id);
-    const second = await toggleFavorite(
-      { targetType: "group", targetId: group.id },
-      user.id,
-    );
+    const second = await toggleFavorite({ targetType: "group", targetId: group.id }, user.id);
     expect(second.favorited).toBe(false);
   });
 

@@ -44,10 +44,7 @@ export default async function QuestionDetailPage({ params }: Props) {
             </CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
               Asked by {authorLabel(question.author)} in{" "}
-              <Link
-                href={`/groups/${question.group.slug}`}
-                className="underline"
-              >
+              <Link href={`/groups/${question.group.slug}`} className="underline">
                 {question.group.name}
               </Link>
             </p>
@@ -61,10 +58,7 @@ export default async function QuestionDetailPage({ params }: Props) {
               . It is no longer listed in the group, search, or notifications.
             </p>
             <p className="text-sm">
-              <Link
-                href={`/groups/${question.group.slug}`}
-                className="underline"
-              >
+              <Link href={`/groups/${question.group.slug}`} className="underline">
                 Back to {question.group.name}
               </Link>
             </p>
@@ -82,14 +76,10 @@ export default async function QuestionDetailPage({ params }: Props) {
     isApprovedViewer &&
     (viewerMembership?.role === "owner" || viewerMembership?.role === "moderator");
   const canDeleteAny = isModOrOwner;
-  const isAuthor =
-    currentUserId !== null && question.author.id === currentUserId;
-  const canResolve =
-    currentUserId !== null && (isAuthor || isModOrOwner);
-  const canDeleteQuestion =
-    currentUserId !== null && (isAuthor || isModOrOwner);
-  const isEdited =
-    question.updatedAt.getTime() > question.createdAt.getTime();
+  const isAuthor = currentUserId !== null && question.author.id === currentUserId;
+  const canResolve = currentUserId !== null && (isAuthor || isModOrOwner);
+  const canDeleteQuestion = currentUserId !== null && (isAuthor || isModOrOwner);
+  const isEdited = question.updatedAt.getTime() > question.createdAt.getTime();
 
   const voteDisabledReason = !currentUserId
     ? "Sign in to vote."
@@ -115,9 +105,7 @@ export default async function QuestionDetailPage({ params }: Props) {
                 status={question.status}
                 canResolve={canResolve}
               />
-              {canDeleteQuestion ? (
-                <QuestionDeleteButton questionId={question.id} />
-              ) : null}
+              {canDeleteQuestion ? <QuestionDeleteButton questionId={question.id} /> : null}
             </div>
           </div>
           <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
@@ -171,17 +159,13 @@ export default async function QuestionDetailPage({ params }: Props) {
             : `${question.answers.length} ${question.answers.length === 1 ? "answer" : "answers"}`}
         </h2>
         {question.answers.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Be the first to answer.
-          </p>
+          <p className="text-sm text-muted-foreground">Be the first to answer.</p>
         ) : (
           <ul className="space-y-3">
             {question.answers.map((a) => {
-              const isOwnAnswer =
-                currentUserId !== null && a.author.id === currentUserId;
+              const isOwnAnswer = currentUserId !== null && a.author.id === currentUserId;
               const canEdit = isOwnAnswer;
-              const answerVoteDisabled =
-                !currentUserId || !isApprovedViewer || isOwnAnswer;
+              const answerVoteDisabled = !currentUserId || !isApprovedViewer || isOwnAnswer;
               const answerVoteDisabledReason = isOwnAnswer
                 ? "You cannot vote on your own answer."
                 : voteDisabledReason;
@@ -220,19 +204,14 @@ export default async function QuestionDetailPage({ params }: Props) {
                           questionId={question.id}
                           initialFavorited={a.isFavorited}
                           disabled={!currentUserId}
-                          disabledReason={
-                            !currentUserId ? "Sign in to favorite." : undefined
-                          }
+                          disabledReason={!currentUserId ? "Sign in to favorite." : undefined}
                         />
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <UserAvatar user={a.author} size="sm" />
                           <span>{authorLabel(a.author)}</span>
                         </div>
                         {showAcceptButton ? (
-                          <AcceptAnswerButton
-                            questionId={question.id}
-                            answerId={a.id}
-                          />
+                          <AcceptAnswerButton questionId={question.id} answerId={a.id} />
                         ) : null}
                       </div>
                       <AnswerActions

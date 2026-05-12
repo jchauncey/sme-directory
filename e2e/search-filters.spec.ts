@@ -11,16 +11,10 @@ async function signIn(page: Page, email: string): Promise<void> {
 // Base UI's Menu radio item doesn't auto-close the menu on select, and its
 // presentation backdrop intercepts pointer events on the next trigger.
 // Explicitly dismiss the menu with Escape after each selection.
-async function pickFilter(
-  page: Page,
-  triggerName: RegExp,
-  optionName: string,
-): Promise<void> {
+async function pickFilter(page: Page, triggerName: RegExp, optionName: string): Promise<void> {
   const trigger = page.getByRole("button", { name: triggerName });
   await trigger.click();
-  await page
-    .getByRole("menuitemradio", { name: optionName, exact: true })
-    .click();
+  await page.getByRole("menuitemradio", { name: optionName, exact: true }).click();
   await page.keyboard.press("Escape");
   await expect(trigger).toHaveAttribute("aria-expanded", "false");
 }

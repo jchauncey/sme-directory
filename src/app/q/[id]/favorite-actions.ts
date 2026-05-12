@@ -7,9 +7,7 @@ import { NotFoundError } from "@/lib/memberships";
 import { RateLimitError, assertRateLimitForAction } from "@/lib/rate-limit";
 import { toggleFavorite, type FavoriteTargetType } from "@/lib/favorites";
 
-export type FavoriteActionResult =
-  | { ok: true; favorited: boolean }
-  | { ok: false; error: string };
+export type FavoriteActionResult = { ok: true; favorited: boolean } | { ok: false; error: string };
 
 export async function favoriteAction(
   targetType: FavoriteTargetType,
@@ -45,11 +43,7 @@ export async function favoriteAction(
     const result = await toggleFavorite({ targetType, targetId }, session.user.id);
     revalidatePath(`/q/${questionId}`);
     revalidatePath("/me");
-    revalidatePath(
-      targetType === "answer"
-        ? "/me/favorites/answers"
-        : "/me/favorites/questions",
-    );
+    revalidatePath(targetType === "answer" ? "/me/favorites/answers" : "/me/favorites/questions");
     return { ok: true, favorited: result.favorited };
   } catch (err) {
     if (err instanceof NotFoundError) {

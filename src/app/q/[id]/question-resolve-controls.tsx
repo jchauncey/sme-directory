@@ -10,11 +10,7 @@ type Props = {
   canResolve: boolean;
 };
 
-export function QuestionResolveControls({
-  questionId,
-  status,
-  canResolve,
-}: Props) {
+export function QuestionResolveControls({ questionId, status, canResolve }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 

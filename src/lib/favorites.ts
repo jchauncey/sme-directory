@@ -62,10 +62,7 @@ export async function viewerFavoritesFor(
   return new Set(rows.map((r) => r.targetId));
 }
 
-async function assertTargetExists(
-  targetType: FavoriteTargetType,
-  targetId: string,
-): Promise<void> {
+async function assertTargetExists(targetType: FavoriteTargetType, targetId: string): Promise<void> {
   if (targetType === "question") {
     const q = await db.question.findUnique({
       where: { id: targetId },
@@ -113,9 +110,7 @@ export async function toggleFavorite(
       await db.favorite.delete({ where: { id: existing.id } });
     } catch (err) {
       // P2025: row already removed by a concurrent request — same outcome.
-      if (
-        !(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025")
-      ) {
+      if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025")) {
         throw err;
       }
     }
@@ -131,9 +126,7 @@ export async function toggleFavorite(
       });
     } catch (err) {
       // P2002: a concurrent request inserted the same row — same outcome.
-      if (
-        !(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")
-      ) {
+      if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) {
         throw err;
       }
     }
@@ -147,9 +140,7 @@ export async function toggleFavorite(
   };
 }
 
-export async function listFavoritesForUser(
-  userId: string,
-): Promise<FavoritesForUser> {
+export async function listFavoritesForUser(userId: string): Promise<FavoritesForUser> {
   const rows = await db.favorite.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
@@ -284,9 +275,7 @@ export async function listFavoriteGroupsForUser(
   return out;
 }
 
-export async function countFavoriteGroupsForUser(
-  userId: string,
-): Promise<number> {
+export async function countFavoriteGroupsForUser(userId: string): Promise<number> {
   return db.favorite.count({
     where: { userId, targetType: "group" },
   });

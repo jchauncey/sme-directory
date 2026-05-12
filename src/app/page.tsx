@@ -69,10 +69,7 @@ export default async function Home() {
       </DashboardBlock>
 
       <DashboardBlock id="open-questions" title="Recent open questions">
-        <OpenQuestionList
-          items={openQuestions}
-          emptyState="No open questions right now."
-        />
+        <OpenQuestionList items={openQuestions} emptyState="No open questions right now." />
       </DashboardBlock>
     </div>
   );

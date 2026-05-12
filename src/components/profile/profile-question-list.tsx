@@ -14,17 +14,11 @@ export function ProfileQuestionList({ items, emptyState }: Props) {
     <ul className="divide-y divide-border">
       {items.map((q) => (
         <li key={q.id} className="py-3 first:pt-0 last:pb-0">
-          <Link
-            href={`/q/${q.id}`}
-            className="text-sm font-medium hover:underline"
-          >
+          <Link href={`/q/${q.id}`} className="text-sm font-medium hover:underline">
             {q.title}
           </Link>
           <p className="mt-1 text-xs text-muted-foreground">
-            <Link
-              href={`/groups/${q.group.slug}`}
-              className="hover:underline"
-            >
+            <Link href={`/groups/${q.group.slug}`} className="hover:underline">
               {q.group.name}
             </Link>
             {" · "}

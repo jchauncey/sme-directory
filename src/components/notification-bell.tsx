@@ -12,21 +12,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSession } from "@/lib/auth-client";
 import { csrfFetch } from "@/lib/csrf-client";
-import type {
-  NotificationListResult,
-  ParsedNotification,
-} from "@/lib/notifications";
+import type { NotificationListResult, ParsedNotification } from "@/lib/notifications";
 
 const POLL_INTERVAL_MS = 30_000;
 
-type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
-  ? Omit<T, K>
-  : never;
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
-type ClientNotification = DistributiveOmit<
-  ParsedNotification,
-  "createdAt" | "readAt"
-> & {
+type ClientNotification = DistributiveOmit<ParsedNotification, "createdAt" | "readAt"> & {
   createdAt: string;
   readAt: string | null;
 };
@@ -174,11 +166,7 @@ export function NotificationBell() {
           <Button
             variant="ghost"
             size="icon"
-            aria-label={
-              unreadCount > 0
-                ? `Notifications (${unreadCount} unread)`
-                : "Notifications"
-            }
+            aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"}
             className="relative"
           />
         }
@@ -230,9 +218,7 @@ export function NotificationBell() {
                     }
                   />
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="truncate font-medium">
-                      {rendered.title}
-                    </span>
+                    <span className="truncate font-medium">{rendered.title}</span>
                     <span className="truncate text-xs text-muted-foreground">
                       {rendered.subtitle}
                     </span>

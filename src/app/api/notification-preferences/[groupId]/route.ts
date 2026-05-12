@@ -1,9 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { errorToResponse, unauthorized, validationFailed } from "@/lib/api/errors";
-import {
-  getPreferenceForGroup,
-  setPreferenceForGroup,
-} from "@/lib/notification-preferences";
+import { getPreferenceForGroup, setPreferenceForGroup } from "@/lib/notification-preferences";
 import { updateNotificationPreferenceSchema } from "@/lib/validation/notification-preferences";
 
 type Ctx = { params: Promise<{ groupId: string }> };

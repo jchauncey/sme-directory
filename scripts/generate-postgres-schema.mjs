@@ -59,10 +59,7 @@ if (!providerRe.test(block)) {
 }
 const rewrittenBlock = block.replace(providerRe, '$1"postgresql"');
 
-const rewritten =
-  original.slice(0, blockStart) +
-  rewrittenBlock +
-  original.slice(blockEnd);
+const rewritten = original.slice(0, blockStart) + rewrittenBlock + original.slice(blockEnd);
 
 const banner =
   "// AUTO-GENERATED from schema.prisma by scripts/generate-postgres-schema.mjs — do not edit.\n" +

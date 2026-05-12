@@ -80,10 +80,7 @@ export function SearchControls({
 
   // Value-stable key so reference churn of `myGroups` from RSC re-renders
   // doesn't refire the URL-sync effect on every server response.
-  const myGroupIdsKey = useMemo(
-    () => myGroups.map((g) => g.id).join(","),
-    [myGroups],
-  );
+  const myGroupIdsKey = useMemo(() => myGroups.map((g) => g.id).join(","), [myGroups]);
   const myGroupIds = useMemo(
     () => (myGroupIdsKey ? myGroupIdsKey.split(",") : []),
     [myGroupIdsKey],
@@ -321,10 +318,9 @@ function AuthorPicker({
     const handle = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(
-          `/api/users/search?q=${encodeURIComponent(term)}&limit=8`,
-          { credentials: "same-origin" },
-        );
+        const res = await fetch(`/api/users/search?q=${encodeURIComponent(term)}&limit=8`, {
+          credentials: "same-origin",
+        });
         if (!res.ok) return;
         const data = (await res.json()) as { items: AuthorOption[] };
         if (!cancelled) setResults(data.items ?? []);

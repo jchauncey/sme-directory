@@ -98,9 +98,7 @@ function pickFromXff(xff: string, hops: number): string | null {
  * Used by `assertRateLimitForAction` (server actions) where only headers are
  * available, not a full `NextRequest`.
  */
-export function clientIpFromHeaders(headers: {
-  get(name: string): string | null;
-}): string | null {
+export function clientIpFromHeaders(headers: { get(name: string): string | null }): string | null {
   const hops = trustedProxyHops();
   if (hops === 0) return null; // caller must use req.ip or "unknown"
 

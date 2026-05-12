@@ -60,13 +60,13 @@ two runs to confirm idempotency.
 `role/status` for each user × group. Use this to pick a user/group combo
 for any scenario without rereading the seed source.
 
-| User      | golang             | react              | kubernetes          | python            | devops             |
-| --------- | ------------------ | ------------------ | ------------------- | ----------------- | ------------------ |
-| **alice** | owner / approved   | member / approved  | moderator / approved | member / approved | member / approved  |
-| **bob**   | member / approved  | owner / approved   | member / approved   | member / pending  | moderator / approved |
-| **carol** | moderator / approved | member / approved  | owner / approved    | member / approved | member / pending   |
-| **dave**  | member / pending   | moderator / approved | member / approved   | owner / approved  | member / approved  |
-| **eve**   | member / rejected  | member / pending   | member / pending    | member / approved | owner / approved   |
+| User      | golang               | react                | kubernetes           | python            | devops               |
+| --------- | -------------------- | -------------------- | -------------------- | ----------------- | -------------------- |
+| **alice** | owner / approved     | member / approved    | moderator / approved | member / approved | member / approved    |
+| **bob**   | member / approved    | owner / approved     | member / approved    | member / pending  | moderator / approved |
+| **carol** | moderator / approved | member / approved    | owner / approved     | member / approved | member / pending     |
+| **dave**  | member / pending     | moderator / approved | member / approved    | owner / approved  | member / approved    |
+| **eve**   | member / rejected    | member / pending     | member / pending     | member / approved | owner / approved     |
 
 ## Edge-case fixtures
 
@@ -107,17 +107,17 @@ FTS5 with `porter unicode61 remove_diacritics 2` and prefix matching on
 the trailing token. Keywords below appear in multiple groups so the scope
 toggle (`current` vs `all`) returns visibly different result counts.
 
-| Query              | Where it appears                                       | Why                                |
-| ------------------ | ------------------------------------------------------ | ---------------------------------- |
-| `sync pool`        | golang (3 questions), devops (1)                       | cross-group multi-match            |
-| `context cancellation` | golang, kubernetes, python                          | cross-group multi-match            |
-| `react server component` | react (1 question + 2 answers)                     | exact phrase, single group         |
-| `kubernetes ingress` | kubernetes (2)                                       | exact phrase, single group         |
-| `python asyncio`   | python (2)                                            | exact phrase, single group         |
-| `terraform plan`   | devops (3)                                            | exact phrase, single group         |
-| `gener`            | golang, kubernetes, python, devops                    | prefix → generic / generation / generator |
-| `café`             | `seed-q-golang-10`                                    | diacritic — should match via `cafe` too |
-| `naïve`            | `seed-q-react-10`                                     | diacritic                          |
+| Query                    | Where it appears                   | Why                                       |
+| ------------------------ | ---------------------------------- | ----------------------------------------- |
+| `sync pool`              | golang (3 questions), devops (1)   | cross-group multi-match                   |
+| `context cancellation`   | golang, kubernetes, python         | cross-group multi-match                   |
+| `react server component` | react (1 question + 2 answers)     | exact phrase, single group                |
+| `kubernetes ingress`     | kubernetes (2)                     | exact phrase, single group                |
+| `python asyncio`         | python (2)                         | exact phrase, single group                |
+| `terraform plan`         | devops (3)                         | exact phrase, single group                |
+| `gener`                  | golang, kubernetes, python, devops | prefix → generic / generation / generator |
+| `café`                   | `seed-q-golang-10`                 | diacritic — should match via `cafe` too   |
+| `naïve`                  | `seed-q-react-10`                  | diacritic                                 |
 
 ## Idempotency
 

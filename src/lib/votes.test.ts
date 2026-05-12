@@ -15,9 +15,7 @@ process.env["DATABASE_URL"] = `file:${testDbPath}`;
 
 const { db } = await import("./db");
 const { createGroup } = await import("./groups");
-const { applyToGroup, AuthorizationError, NotFoundError } = await import(
-  "./memberships"
-);
+const { applyToGroup, AuthorizationError, NotFoundError } = await import("./memberships");
 const { castVote, viewerVotesFor, voteScoresFor } = await import("./votes");
 
 beforeAll(async () => {
@@ -53,10 +51,7 @@ async function makeUser(label: string) {
 
 async function setupGroupWithQuestion(autoApprove = true) {
   const author = await makeUser("author");
-  const group = await createGroup(
-    { name: "G", slug: uniq("g"), autoApprove },
-    author.id,
-  );
+  const group = await createGroup({ name: "G", slug: uniq("g"), autoApprove }, author.id);
   const question = await db.question.create({
     data: {
       groupId: group.id,
@@ -74,10 +69,7 @@ describe("castVote on questions", () => {
     const voter = await makeUser("voter");
     await applyToGroup(group.id, voter.id);
 
-    const result = await castVote(
-      { targetType: "question", targetId: question.id },
-      voter.id,
-    );
+    const result = await castVote({ targetType: "question", targetId: question.id }, voter.id);
 
     expect(result.voted).toBe(true);
     expect(result.voteScore).toBe(1);
@@ -103,10 +95,7 @@ describe("castVote on questions", () => {
     await applyToGroup(group.id, voter.id);
 
     await castVote({ targetType: "question", targetId: question.id }, voter.id);
-    const second = await castVote(
-      { targetType: "question", targetId: question.id },
-      voter.id,
-    );
+    const second = await castVote({ targetType: "question", targetId: question.id }, voter.id);
 
     expect(second.voted).toBe(false);
     expect(second.voteScore).toBe(0);
@@ -150,10 +139,7 @@ describe("castVote on questions", () => {
   it("throws NotFoundError for unknown question id", async () => {
     const voter = await makeUser("v404");
     await expect(
-      castVote(
-        { targetType: "question", targetId: "does-not-exist" },
-        voter.id,
-      ),
+      castVote({ targetType: "question", targetId: "does-not-exist" }, voter.id),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 });
@@ -168,10 +154,7 @@ describe("castVote on answers", () => {
     });
 
     // Author of the question (not the answer) votes on the answer.
-    const result = await castVote(
-      { targetType: "answer", targetId: answer.id },
-      author.id,
-    );
+    const result = await castVote({ targetType: "answer", targetId: answer.id }, author.id);
 
     expect(result.voted).toBe(true);
     expect(result.voteScore).toBe(1);
@@ -192,10 +175,7 @@ describe("castVote on answers", () => {
   it("throws NotFoundError for unknown answer id", async () => {
     const voter = await makeUser("va404");
     await expect(
-      castVote(
-        { targetType: "answer", targetId: "does-not-exist" },
-        voter.id,
-      ),
+      castVote({ targetType: "answer", targetId: "does-not-exist" }, voter.id),
     ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

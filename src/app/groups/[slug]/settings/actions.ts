@@ -120,7 +120,10 @@ export async function toggleAutoApproveAction(
 
 export type ArchiveActionResult = { error?: string; ok?: true };
 
-export async function archiveGroupAction(slug: string, csrfToken: string): Promise<ArchiveActionResult> {
+export async function archiveGroupAction(
+  slug: string,
+  csrfToken: string,
+): Promise<ArchiveActionResult> {
   try {
     await assertCsrfToken(csrfToken);
   } catch (err) {
@@ -152,7 +155,10 @@ export async function archiveGroupAction(slug: string, csrfToken: string): Promi
   }
 }
 
-export async function unarchiveGroupAction(slug: string, csrfToken: string): Promise<ArchiveActionResult> {
+export async function unarchiveGroupAction(
+  slug: string,
+  csrfToken: string,
+): Promise<ArchiveActionResult> {
   try {
     await assertCsrfToken(csrfToken);
   } catch (err) {

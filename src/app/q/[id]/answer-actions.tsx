@@ -4,11 +4,7 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import { CsrfField } from "@/components/csrf-field";
 import { MarkdownBody } from "@/components/markdown-body";
 import { readCsrfToken } from "@/lib/csrf-client";
-import {
-  deleteAnswerAction,
-  updateAnswerAction,
-  type AnswerFormState,
-} from "./actions";
+import { deleteAnswerAction, updateAnswerAction, type AnswerFormState } from "./actions";
 
 const initialEditState: AnswerFormState = {};
 
@@ -24,20 +20,11 @@ type Props = {
   canDelete: boolean;
 };
 
-export function AnswerActions({
-  answerId,
-  questionId,
-  body,
-  canEdit,
-  canDelete,
-}: Props) {
+export function AnswerActions({ answerId, questionId, body, canEdit, canDelete }: Props) {
   const [editing, setEditing] = useState(false);
 
   const editAction = updateAnswerAction.bind(null, answerId, questionId);
-  const [editState, editFormAction, editPending] = useActionState(
-    editAction,
-    initialEditState,
-  );
+  const [editState, editFormAction, editPending] = useActionState(editAction, initialEditState);
 
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletePending, startDelete] = useTransition();

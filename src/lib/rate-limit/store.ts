@@ -50,10 +50,7 @@ export class MemoryStore implements RateLimitStore {
   private readonly sweepCadence: number;
   private consumeCount = 0;
 
-  constructor(
-    clock: Clock = Date.now,
-    opts: { maxBuckets?: number; sweepCadence?: number } = {},
-  ) {
+  constructor(clock: Clock = Date.now, opts: { maxBuckets?: number; sweepCadence?: number } = {}) {
     this.clock = clock;
     this.maxBuckets = opts.maxBuckets ?? DEFAULT_MAX_BUCKETS;
     this.sweepCadence = opts.sweepCadence ?? DEFAULT_SWEEP_CADENCE;
@@ -74,10 +71,7 @@ export class MemoryStore implements RateLimitStore {
     this.buckets.set(key, state);
 
     this.consumeCount += 1;
-    if (
-      this.consumeCount % this.sweepCadence === 0 ||
-      this.buckets.size > this.maxBuckets
-    ) {
+    if (this.consumeCount % this.sweepCadence === 0 || this.buckets.size > this.maxBuckets) {
       this.sweep(now, limit);
     }
 

@@ -267,10 +267,7 @@ describe("listGroups", () => {
     const tag = `ls-page-${Date.now()}`;
     const created: string[] = [];
     for (let i = 0; i < 5; i++) {
-      const g = await createGroup(
-        { name: `G${i}`, slug: `${tag}-${i}` },
-        owner.id,
-      );
+      const g = await createGroup({ name: `G${i}`, slug: `${tag}-${i}` }, owner.id);
       created.push(g.id);
       await new Promise((r) => setTimeout(r, 5));
     }
@@ -331,9 +328,9 @@ describe("archiveGroup / unarchiveGroup", () => {
     const slug = `arch-update-${Date.now()}`;
     await createGroup({ name: "A", slug }, owner.id);
     await archiveGroup(slug, owner.id);
-    await expect(
-      updateGroup(slug, { name: "Renamed" }, owner.id),
-    ).rejects.toBeInstanceOf(ConflictError);
+    await expect(updateGroup(slug, { name: "Renamed" }, owner.id)).rejects.toBeInstanceOf(
+      ConflictError,
+    );
   });
 
   it("assertGroupNotArchived throws when archived, no-op otherwise", async () => {

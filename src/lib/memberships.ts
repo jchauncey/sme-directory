@@ -36,9 +36,7 @@ export class NotAMemberError extends Error {
 
 export class SoleOwnerCannotLeaveError extends Error {
   readonly code = "SOLE_OWNER" as const;
-  constructor(
-    message = "You're the only owner. Promote another member to owner before leaving.",
-  ) {
+  constructor(message = "You're the only owner. Promote another member to owner before leaving.") {
     super(message);
     this.name = "SoleOwnerCannotLeaveError";
   }

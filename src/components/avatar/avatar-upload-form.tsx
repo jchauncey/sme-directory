@@ -87,13 +87,7 @@ export function AvatarUploadForm({ endpoint, hasImage = false, label = "Avatar" 
         Upload
       </Button>
       {hasImage ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={submitting}
-          onClick={onRemove}
-        >
+        <Button type="button" variant="outline" size="sm" disabled={submitting} onClick={onRemove}>
           Remove
         </Button>
       ) : null}

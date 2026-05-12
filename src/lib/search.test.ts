@@ -44,9 +44,7 @@ describe.skipIf(isPostgres)("toFtsMatchExpr", () => {
     // Non-alphanumeric runs split a "word" into separate tokens rather than
     // smushing the surrounding characters together, so queries like
     // "net/http" find docs containing both words.
-    expect(toFtsMatchExpr("foo:bar baz-qux")).toBe(
-      '"foo" AND "bar" AND "baz" AND "qux"*',
-    );
+    expect(toFtsMatchExpr("foo:bar baz-qux")).toBe('"foo" AND "bar" AND "baz" AND "qux"*');
     expect(toFtsMatchExpr("net/http")).toBe('"net" AND "http"*');
   });
 });
@@ -65,10 +63,7 @@ describe("searchContent", () => {
 
   it("finds a question by title and includes group + author + snippet", async () => {
     const author = await makeUser("titleAuthor");
-    const group = await createGroup(
-      { name: "T", slug: uniq("t"), autoApprove: true },
-      author.id,
-    );
+    const group = await createGroup({ name: "T", slug: uniq("t"), autoApprove: true }, author.id);
     await createQuestion(
       { title: "How to integrate Stripe webhooks safely", body: "Asking about idempotency." },
       group.id,
@@ -95,10 +90,7 @@ describe("searchContent", () => {
 
   it("finds a question by body when the title doesn't match", async () => {
     const author = await makeUser("bodyAuthor");
-    const group = await createGroup(
-      { name: "B", slug: uniq("b"), autoApprove: true },
-      author.id,
-    );
+    const group = await createGroup({ name: "B", slug: uniq("b"), autoApprove: true }, author.id);
     await createQuestion(
       { title: "An ordinary question", body: "Has anyone used pgvector with Prisma?" },
       group.id,
@@ -120,10 +112,7 @@ describe("searchContent", () => {
 
   it("finds an answer by body and surfaces the parent question's title + group", async () => {
     const author = await makeUser("ansAuthor");
-    const group = await createGroup(
-      { name: "A", slug: uniq("a"), autoApprove: true },
-      author.id,
-    );
+    const group = await createGroup({ name: "A", slug: uniq("a"), autoApprove: true }, author.id);
     const q = await createQuestion(
       { title: "Parent question title here", body: "context body" },
       group.id,
@@ -194,10 +183,7 @@ describe("searchContent", () => {
 
   it("paginates with page + per", async () => {
     const author = await makeUser("pager");
-    const group = await createGroup(
-      { name: "P", slug: uniq("p"), autoApprove: true },
-      author.id,
-    );
+    const group = await createGroup({ name: "P", slug: uniq("p"), autoApprove: true }, author.id);
     await createQuestion(
       { title: "Macropod fact one", body: "facts about macropod" },
       group.id,
@@ -233,10 +219,7 @@ describe("searchContent", () => {
 
   it("reflects question updates via the FTS update trigger", async () => {
     const author = await makeUser("upd");
-    const group = await createGroup(
-      { name: "U", slug: uniq("u"), autoApprove: true },
-      author.id,
-    );
+    const group = await createGroup({ name: "U", slug: uniq("u"), autoApprove: true }, author.id);
     const q = await createQuestion(
       { title: "Initially about bandicoots", body: "marsupial body" },
       group.id,
@@ -278,10 +261,7 @@ describe("searchContent", () => {
 
   it("removes a question from results after deletion via the FTS delete trigger", async () => {
     const author = await makeUser("del");
-    const group = await createGroup(
-      { name: "D", slug: uniq("d"), autoApprove: true },
-      author.id,
-    );
+    const group = await createGroup({ name: "D", slug: uniq("d"), autoApprove: true }, author.id);
     const q = await createQuestion(
       { title: "Numbat sighting today", body: "extra body" },
       group.id,
@@ -311,10 +291,7 @@ describe("searchContent", () => {
 
   it("excludes soft-deleted questions and their answers", async () => {
     const author = await makeUser("softdel");
-    const group = await createGroup(
-      { name: "SD", slug: uniq("sd"), autoApprove: true },
-      author.id,
-    );
+    const group = await createGroup({ name: "SD", slug: uniq("sd"), autoApprove: true }, author.id);
     const q = await createQuestion(
       { title: "Quokka habitat survey", body: "hidden after delete" },
       group.id,
@@ -336,9 +313,7 @@ describe("searchContent", () => {
       per: 5,
     });
     expect(before.items.some((i) => i.questionId === q.id)).toBe(true);
-    expect(
-      before.items.some((i) => i.type === "answer" && i.answerId === answer.id),
-    ).toBe(true);
+    expect(before.items.some((i) => i.type === "answer" && i.answerId === answer.id)).toBe(true);
     const beforeTotal = before.total;
 
     await db.question.update({
@@ -448,10 +423,7 @@ describe("searchContent", () => {
 
   it("filters by date range using each hit's createdAt", async () => {
     const author = await makeUser("dateR");
-    const group = await createGroup(
-      { name: "DR", slug: uniq("dr"), autoApprove: true },
-      author.id,
-    );
+    const group = await createGroup({ name: "DR", slug: uniq("dr"), autoApprove: true }, author.id);
     const now = Date.now();
     const ages = [
       { label: "1d", offset: 1 * 24 * 60 * 60 * 1000 },
@@ -525,10 +497,7 @@ describe("searchContent", () => {
   it("filters by authorId across questions and answers", async () => {
     const a1 = await makeUser("authA");
     const a2 = await makeUser("authB");
-    const group = await createGroup(
-      { name: "AU", slug: uniq("au"), autoApprove: true },
-      a1.id,
-    );
+    const group = await createGroup({ name: "AU", slug: uniq("au"), autoApprove: true }, a1.id);
     // a2 needs membership to post — ensure via createGroup auto-add for a1.
     // For a2 to post answers, the schema doesn't require membership here.
     const qA = await createQuestion(
@@ -566,27 +535,12 @@ describe("searchContent", () => {
 
   it("sorts by newest when sort=newest", async () => {
     const author = await makeUser("sortN");
-    const group = await createGroup(
-      { name: "SN", slug: uniq("sn"), autoApprove: true },
-      author.id,
-    );
-    const q1 = await createQuestion(
-      { title: "Koala first", body: "koala" },
-      group.id,
-      author.id,
-    );
+    const group = await createGroup({ name: "SN", slug: uniq("sn"), autoApprove: true }, author.id);
+    const q1 = await createQuestion({ title: "Koala first", body: "koala" }, group.id, author.id);
     await new Promise((r) => setTimeout(r, 10));
-    const q2 = await createQuestion(
-      { title: "Koala second", body: "koala" },
-      group.id,
-      author.id,
-    );
+    const q2 = await createQuestion({ title: "Koala second", body: "koala" }, group.id, author.id);
     await new Promise((r) => setTimeout(r, 10));
-    const q3 = await createQuestion(
-      { title: "Koala third", body: "koala" },
-      group.id,
-      author.id,
-    );
+    const q3 = await createQuestion({ title: "Koala third", body: "koala" }, group.id, author.id);
 
     const res = await searchContent({
       q: "koala",
@@ -596,9 +550,7 @@ describe("searchContent", () => {
       per: 50,
       sort: "newest",
     });
-    const order = res.items
-      .filter((i) => i.type === "question")
-      .map((i) => i.questionId);
+    const order = res.items.filter((i) => i.type === "question").map((i) => i.questionId);
     const idx1 = order.indexOf(q1.id);
     const idx2 = order.indexOf(q2.id);
     const idx3 = order.indexOf(q3.id);
@@ -609,10 +561,7 @@ describe("searchContent", () => {
   it("supports combined filters: status + range + author + newest sort", async () => {
     const author = await makeUser("combo");
     const other = await makeUser("comboOther");
-    const group = await createGroup(
-      { name: "CO", slug: uniq("co"), autoApprove: true },
-      author.id,
-    );
+    const group = await createGroup({ name: "CO", slug: uniq("co"), autoApprove: true }, author.id);
     const recent = await createQuestion(
       { title: "Echidna sighting recent", body: "echidna match" },
       group.id,
@@ -684,9 +633,7 @@ describe("searchContent", () => {
       per: 5,
     });
     expect(before.items.some((i) => i.questionId === q.id)).toBe(true);
-    expect(
-      before.items.some((i) => i.type === "answer" && i.answerId === answer.id),
-    ).toBe(true);
+    expect(before.items.some((i) => i.type === "answer" && i.answerId === answer.id)).toBe(true);
 
     await db.group.update({
       where: { id: group.id },

@@ -1,21 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CsrfInput } from "@/components/csrf-input";
 import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getGroupBySlug } from "@/lib/groups";
-import {
-  getUserMembershipStatus,
-  listSuccessorCandidates,
-} from "@/lib/memberships";
+import { getUserMembershipStatus, listSuccessorCandidates } from "@/lib/memberships";
 import { confirmLeaveAction } from "../actions";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -126,8 +117,7 @@ function SoleOwnerWithSuccessorsCard({
               </option>
               {candidates.map((c) => (
                 <option key={c.userId} value={c.userId}>
-                  {(c.name ?? c.email ?? "Anonymous") +
-                    (c.role !== "member" ? ` (${c.role})` : "")}
+                  {(c.name ?? c.email ?? "Anonymous") + (c.role !== "member" ? ` (${c.role})` : "")}
                 </option>
               ))}
             </select>
@@ -152,9 +142,9 @@ function SoleOwnerNoSuccessorsCard({ slug }: { slug: string }) {
       <CardHeader>
         <CardTitle className="text-base">You can&apos;t leave yet</CardTitle>
         <CardDescription>
-          You&apos;re the only member of this group, so there&apos;s no one to take over as
-          owner. Group deletion isn&apos;t available yet — once the group has at least one
-          other approved member you&apos;ll be able to transfer ownership and leave.
+          You&apos;re the only member of this group, so there&apos;s no one to take over as owner.
+          Group deletion isn&apos;t available yet — once the group has at least one other approved
+          member you&apos;ll be able to transfer ownership and leave.
         </CardDescription>
       </CardHeader>
       <CardContent>

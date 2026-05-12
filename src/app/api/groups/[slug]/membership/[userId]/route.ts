@@ -58,12 +58,7 @@ export async function PATCH(req: Request, ctx: Ctx): Promise<Response> {
       return Response.json({ membership });
     }
 
-    const membership = await setMembershipRole(
-      group.id,
-      userId,
-      parsed.data.role,
-      session.user.id,
-    );
+    const membership = await setMembershipRole(group.id, userId, parsed.data.role, session.user.id);
     return Response.json({ membership });
   } catch (err) {
     return errorToResponse(err);

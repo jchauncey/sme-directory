@@ -1,9 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GroupCard } from "@/components/groups/group-card";
 import { requireAuth } from "@/lib/auth";
 import { listFavoriteGroupsForUser } from "@/lib/favorites";
@@ -23,8 +18,8 @@ export default async function FavoriteGroupsPage() {
         <CardContent className="pt-4">
           {groups.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              You haven&rsquo;t favorited any groups yet. Open a group page and
-              tap the star to save it here.
+              You haven&rsquo;t favorited any groups yet. Open a group page and tap the star to save
+              it here.
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

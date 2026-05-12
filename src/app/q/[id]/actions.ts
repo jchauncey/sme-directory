@@ -3,28 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { assertCsrf, assertCsrfToken, CsrfError } from "@/lib/csrf-server";
-import {
-  AuthorizationError,
-  NotFoundError,
-  assertApprovedMember,
-} from "@/lib/memberships";
-import {
-  createAnswer,
-  deleteAnswer,
-  updateAnswer,
-} from "@/lib/answers";
-import {
-  acceptAnswer,
-  reopenQuestion,
-  softDeleteQuestion,
-  updateQuestion,
-} from "@/lib/questions";
+import { AuthorizationError, NotFoundError, assertApprovedMember } from "@/lib/memberships";
+import { createAnswer, deleteAnswer, updateAnswer } from "@/lib/answers";
+import { acceptAnswer, reopenQuestion, softDeleteQuestion, updateQuestion } from "@/lib/questions";
 import { db } from "@/lib/db";
 import { RateLimitError, assertRateLimitForAction } from "@/lib/rate-limit";
-import {
-  createAnswerSchema,
-  updateAnswerSchema,
-} from "@/lib/validation/answers";
+import { createAnswerSchema, updateAnswerSchema } from "@/lib/validation/answers";
 import { updateQuestionSchema } from "@/lib/validation/questions";
 
 function rateLimitedFormState<T extends { error?: string }>(
@@ -296,8 +280,7 @@ export async function reopenQuestionAction(
   } catch (err) {
     if (err instanceof AuthorizationError) {
       return {
-        error:
-          "Only the question's author or a group moderator/owner can reopen this question.",
+        error: "Only the question's author or a group moderator/owner can reopen this question.",
       };
     }
     if (err instanceof NotFoundError) {
@@ -336,8 +319,7 @@ export async function deleteQuestionAction(
   } catch (err) {
     if (err instanceof AuthorizationError) {
       return {
-        error:
-          "Only the question's author or a group moderator/owner can delete this question.",
+        error: "Only the question's author or a group moderator/owner can delete this question.",
       };
     }
     if (err instanceof NotFoundError) {

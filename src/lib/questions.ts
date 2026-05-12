@@ -9,10 +9,7 @@ import {
 } from "@/lib/memberships";
 import { viewerVotesFor, voteScoresFor } from "@/lib/votes";
 import { viewerFavoritesFor } from "@/lib/favorites";
-import type {
-  CreateQuestionInput,
-  UpdateQuestionInput,
-} from "@/lib/validation/questions";
+import type { CreateQuestionInput, UpdateQuestionInput } from "@/lib/validation/questions";
 
 export type QuestionAuthor = Pick<User, "id" | "email" | "name" | "image">;
 
@@ -168,10 +165,7 @@ export async function listQuestionsForGroup(
   return { items, total, page: opts.page, per: opts.per };
 }
 
-export async function getQuestionById(
-  id: string,
-  viewerUserId?: string,
-): Promise<QuestionDetail> {
+export async function getQuestionById(id: string, viewerUserId?: string): Promise<QuestionDetail> {
   const q = await db.question.findUnique({
     where: { id },
     include: {
@@ -304,10 +298,7 @@ export async function acceptAnswer(
   });
 }
 
-export async function reopenQuestion(
-  questionId: string,
-  userId: string,
-): Promise<Question> {
+export async function reopenQuestion(questionId: string, userId: string): Promise<Question> {
   const question = await db.question.findUnique({
     where: { id: questionId },
     select: {

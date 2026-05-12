@@ -1,14 +1,6 @@
 import { getSession } from "@/lib/auth";
-import {
-  errorToResponse,
-  unauthorized,
-  validationFailed,
-} from "@/lib/api/errors";
-import {
-  getQuestionById,
-  softDeleteQuestion,
-  updateQuestion,
-} from "@/lib/questions";
+import { errorToResponse, unauthorized, validationFailed } from "@/lib/api/errors";
+import { getQuestionById, softDeleteQuestion, updateQuestion } from "@/lib/questions";
 import { updateQuestionSchema } from "@/lib/validation/questions";
 
 type Ctx = { params: Promise<{ id: string }> };

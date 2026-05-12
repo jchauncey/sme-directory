@@ -112,7 +112,9 @@ Two strategies depending on what you're testing:
 - **Polling intervals** (`NotificationBell`): fake only the interval timers so we can advance through poll cycles deterministically.
   ```ts
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
-  await act(async () => { vi.advanceTimersByTime(30_000); });
+  await act(async () => {
+    vi.advanceTimersByTime(30_000);
+  });
   ```
 
 `NotificationBell` queues its initial fetch as a microtask (`Promise.resolve().then(...)`); flush with `await act(async () => { await Promise.resolve(); })` before asserting on rendered state.

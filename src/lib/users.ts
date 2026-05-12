@@ -8,10 +8,7 @@ export type UserSummary = {
   image: string | null;
 };
 
-export async function searchUsersByNameOrEmail(
-  q: string,
-  limit = 10,
-): Promise<UserSummary[]> {
+export async function searchUsersByNameOrEmail(q: string, limit = 10): Promise<UserSummary[]> {
   const term = q.trim();
   if (!term) return [];
   const take = Math.min(Math.max(limit, 1), 20);

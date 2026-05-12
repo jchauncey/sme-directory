@@ -66,23 +66,11 @@ describe("listQuestionsByAuthor", () => {
     );
     await applyToGroup(group.id, other.id);
 
-    const q1 = await createQuestion(
-      { title: "First", body: "first body" },
-      group.id,
-      author.id,
-    );
+    const q1 = await createQuestion({ title: "First", body: "first body" }, group.id, author.id);
     await new Promise((r) => setTimeout(r, 5));
-    const q2 = await createQuestion(
-      { title: "Second", body: "second body" },
-      group.id,
-      author.id,
-    );
+    const q2 = await createQuestion({ title: "Second", body: "second body" }, group.id, author.id);
     // Other user's question must be excluded.
-    await createQuestion(
-      { title: "Theirs", body: "irrelevant" },
-      group.id,
-      other.id,
-    );
+    await createQuestion({ title: "Theirs", body: "irrelevant" }, group.id, other.id);
 
     // q1 gets one answer + a vote.
     await db.answer.create({
@@ -112,11 +100,7 @@ describe("listQuestionsByAuthor", () => {
     );
     const ids: string[] = [];
     for (let i = 0; i < 5; i++) {
-      const q = await createQuestion(
-        { title: `Q-${i}`, body: "body" },
-        group.id,
-        author.id,
-      );
+      const q = await createQuestion({ title: `Q-${i}`, body: "body" }, group.id, author.id);
       ids.push(q.id);
       await new Promise((r) => setTimeout(r, 2));
     }
@@ -136,27 +120,13 @@ describe("listAnswersByAuthor", () => {
   it("returns user's answers across groups with question summary and score", async () => {
     const answerer = await makeUser("ans-author");
     const asker = await makeUser("ans-asker");
-    const groupA = await createGroup(
-      { name: "AA", slug: uniq("aa"), autoApprove: true },
-      asker.id,
-    );
-    const groupB = await createGroup(
-      { name: "BB", slug: uniq("bb"), autoApprove: true },
-      asker.id,
-    );
+    const groupA = await createGroup({ name: "AA", slug: uniq("aa"), autoApprove: true }, asker.id);
+    const groupB = await createGroup({ name: "BB", slug: uniq("bb"), autoApprove: true }, asker.id);
     await applyToGroup(groupA.id, answerer.id);
     await applyToGroup(groupB.id, answerer.id);
 
-    const qa = await createQuestion(
-      { title: "QA", body: "?" },
-      groupA.id,
-      asker.id,
-    );
-    const qb = await createQuestion(
-      { title: "QB", body: "?" },
-      groupB.id,
-      asker.id,
-    );
+    const qa = await createQuestion({ title: "QA", body: "?" }, groupA.id, asker.id);
+    const qb = await createQuestion({ title: "QB", body: "?" }, groupB.id, asker.id);
 
     const aA = await db.answer.create({
       data: { questionId: qa.id, authorId: answerer.id, body: "A answer" },
@@ -190,16 +160,9 @@ describe("listAnswersByAuthor", () => {
   it("excludes answers authored by other users", async () => {
     const me = await makeUser("ans-me");
     const them = await makeUser("ans-them");
-    const group = await createGroup(
-      { name: "X", slug: uniq("ax"), autoApprove: true },
-      me.id,
-    );
+    const group = await createGroup({ name: "X", slug: uniq("ax"), autoApprove: true }, me.id);
     await applyToGroup(group.id, them.id);
-    const q = await createQuestion(
-      { title: "T", body: "?" },
-      group.id,
-      me.id,
-    );
+    const q = await createQuestion({ title: "T", body: "?" }, group.id, me.id);
     await db.answer.create({
       data: { questionId: q.id, authorId: them.id, body: "theirs" },
     });
@@ -214,11 +177,7 @@ describe("listAnswersByAuthor", () => {
       { name: "Ans Pag", slug: uniq("ansp"), autoApprove: true },
       author.id,
     );
-    const q = await createQuestion(
-      { title: "Pag Q", body: "?" },
-      group.id,
-      author.id,
-    );
+    const q = await createQuestion({ title: "Pag Q", body: "?" }, group.id, author.id);
     const ids: string[] = [];
     for (let i = 0; i < 5; i++) {
       const a = await db.answer.create({
@@ -284,11 +243,7 @@ describe("listFavoritesByUser", () => {
       { name: "fav G", slug: uniq("favg"), autoApprove: true },
       author.id,
     );
-    const q = await createQuestion(
-      { title: "fav Q", body: "body" },
-      group.id,
-      author.id,
-    );
+    const q = await createQuestion({ title: "fav Q", body: "body" }, group.id, author.id);
     const a = await db.answer.create({
       data: { questionId: q.id, authorId: author.id, body: "fav A body" },
     });

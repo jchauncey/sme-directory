@@ -1,18 +1,9 @@
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MarkdownBody } from "@/components/markdown-body";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { requireAuth } from "@/lib/auth";
-import {
-  countFavoriteGroupsForUser,
-  listFavoritesForUser,
-} from "@/lib/favorites";
+import { countFavoriteGroupsForUser, listFavoritesForUser } from "@/lib/favorites";
 import {
   countAnswersByAuthor,
   countQuestionsByAuthor,
@@ -30,21 +21,15 @@ export default async function MePage() {
   const session = await requireAuth();
   const userId = session.user.id;
 
-  const [
-    profile,
-    questionCount,
-    answerCount,
-    favorites,
-    favoriteGroupCount,
-    groups,
-  ] = await Promise.all([
-    getOwnProfile(userId),
-    countQuestionsByAuthor(userId),
-    countAnswersByAuthor(userId),
-    listFavoritesForUser(userId),
-    countFavoriteGroupsForUser(userId),
-    listGroupsForUser(userId, { includePending: false }),
-  ]);
+  const [profile, questionCount, answerCount, favorites, favoriteGroupCount, groups] =
+    await Promise.all([
+      getOwnProfile(userId),
+      countQuestionsByAuthor(userId),
+      countAnswersByAuthor(userId),
+      listFavoritesForUser(userId),
+      countFavoriteGroupsForUser(userId),
+      listGroupsForUser(userId, { includePending: false }),
+    ]);
 
   const name = profile?.name ?? session.user.name;
   const bio = profile?.bio ?? null;
@@ -97,13 +82,9 @@ export default async function MePage() {
               href={s.href}
               className="group block rounded-lg border border-border p-4 transition-colors hover:bg-muted/40"
             >
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                {s.label}
-              </div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">{s.label}</div>
               <div className="mt-1 flex items-baseline justify-between">
-                <span className="text-2xl font-semibold tabular-nums">
-                  {s.count}
-                </span>
+                <span className="text-2xl font-semibold tabular-nums">{s.count}</span>
                 <span className="text-xs text-muted-foreground group-hover:text-foreground">
                   View →
                 </span>

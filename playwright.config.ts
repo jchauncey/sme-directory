@@ -4,8 +4,7 @@ const PORT = Number(process.env["E2E_PORT"] ?? 3000);
 const BASE_URL = `http://localhost:${PORT}`;
 
 const E2E_DATABASE_URL = "file:./e2e.db";
-const E2E_AUTH_SECRET =
-  process.env.AUTH_SECRET ?? "e2e-dev-only-secret-32-chars-min-xx";
+const E2E_AUTH_SECRET = process.env.AUTH_SECRET ?? "e2e-dev-only-secret-32-chars-min-xx";
 
 export default defineConfig({
   testDir: "./e2e",

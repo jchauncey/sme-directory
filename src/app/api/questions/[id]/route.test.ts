@@ -104,10 +104,7 @@ async function setupForDelete(slug: string): Promise<DeleteSetup> {
   const ownerEmail = `del-o-${slug}@example.com`;
   await auth.signIn(ownerEmail);
   const ownerSess = (await auth.getSession())!;
-  const group = await createGroup(
-    { name: slug, slug, autoApprove: true },
-    ownerSess.user.id,
-  );
+  const group = await createGroup({ name: slug, slug, autoApprove: true }, ownerSess.user.id);
 
   cookieStore.clear();
   const authorEmail = `del-a-${slug}@example.com`;
@@ -142,10 +139,7 @@ async function setupQuestion(slug: string): Promise<PatchSetup> {
   const ownerEmail = `o-${slug}@example.com`;
   await auth.signIn(ownerEmail);
   const ownerSess = (await auth.getSession())!;
-  const group = await createGroup(
-    { name: slug, slug, autoApprove: true },
-    ownerSess.user.id,
-  );
+  const group = await createGroup({ name: slug, slug, autoApprove: true }, ownerSess.user.id);
 
   cookieStore.clear();
   const authorEmail = `a-${slug}-${Math.random()}@example.com`;
@@ -185,10 +179,7 @@ describe("GET /api/questions/[id]", () => {
     await auth.signIn(email);
     const sess = (await auth.getSession())!;
     const slug = `qd-${Date.now()}`;
-    const group = await createGroup(
-      { name: "QD", slug, autoApprove: true },
-      sess.user.id,
-    );
+    const group = await createGroup({ name: "QD", slug, autoApprove: true }, sess.user.id);
     const q = await db.question.create({
       data: {
         groupId: group.id,
@@ -420,8 +411,6 @@ describe("PATCH /api/questions/[id]", () => {
     });
     expect(after!.title).toBe("Updated question title");
     expect(after!.body).toBe("Updated question body.");
-    expect(after!.updatedAt.getTime()).toBeGreaterThan(
-      before!.updatedAt.getTime(),
-    );
+    expect(after!.updatedAt.getTime()).toBeGreaterThan(before!.updatedAt.getTime());
   });
 });

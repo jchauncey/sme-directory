@@ -11,9 +11,7 @@ vi.mock("@/lib/auth-client", () => ({
 }));
 
 vi.mock("@/lib/csrf-client", () => ({
-  csrfFetch: vi.fn(() =>
-    Promise.resolve(new Response("{}", { status: 200 })),
-  ),
+  csrfFetch: vi.fn(() => Promise.resolve(new Response("{}", { status: 200 }))),
 }));
 
 const mockedUseSession = vi.mocked(useSession);
@@ -36,11 +34,7 @@ function emptyNotificationList(unreadCount = 0) {
   };
 }
 
-function notification(
-  id: string,
-  unread: boolean,
-  overrides: Record<string, unknown> = {},
-) {
+function notification(id: string, unread: boolean, overrides: Record<string, unknown> = {}) {
   return {
     id,
     type: "question.created" as const,
@@ -120,16 +114,12 @@ describe("NotificationBell", () => {
     expect(fetchSpy).toHaveBeenCalledWith("/api/notifications", {
       cache: "no-store",
     });
-    expect(
-      screen.getByLabelText(/Notifications \(2 unread\)/i),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Notifications \(2 unread\)/i)).toBeInTheDocument();
   });
 
   it("polls every 30 seconds while the tab is visible", async () => {
     authenticated();
-    const fetchSpy = vi
-      .fn()
-      .mockResolvedValue(jsonResponse(emptyNotificationList(0)));
+    const fetchSpy = vi.fn().mockResolvedValue(jsonResponse(emptyNotificationList(0)));
     vi.stubGlobal("fetch", fetchSpy);
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
 
@@ -152,9 +142,7 @@ describe("NotificationBell", () => {
 
   it("pauses polling when the tab is hidden and resumes on visible", async () => {
     authenticated();
-    const fetchSpy = vi
-      .fn()
-      .mockResolvedValue(jsonResponse(emptyNotificationList(0)));
+    const fetchSpy = vi.fn().mockResolvedValue(jsonResponse(emptyNotificationList(0)));
     vi.stubGlobal("fetch", fetchSpy);
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
 
@@ -214,13 +202,8 @@ describe("NotificationBell", () => {
     await user.click(screen.getByLabelText(/Notifications \(2 unread\)/i));
     await user.click(await screen.findByText("Mark all read"));
 
-    expect(mockedCsrfFetch).toHaveBeenCalledWith(
-      "/api/notifications/read-all",
-      { method: "POST" },
-    );
-    expect(
-      screen.queryByLabelText(/Notifications \(\d+ unread\)/i),
-    ).not.toBeInTheDocument();
+    expect(mockedCsrfFetch).toHaveBeenCalledWith("/api/notifications/read-all", { method: "POST" });
+    expect(screen.queryByLabelText(/Notifications \(\d+ unread\)/i)).not.toBeInTheDocument();
     expect(screen.getByLabelText(/^Notifications$/)).toBeInTheDocument();
   });
 
@@ -262,12 +245,7 @@ describe("NotificationBell", () => {
     const firstItem = await screen.findByText("First notification title");
     await user.click(firstItem);
 
-    expect(mockedCsrfFetch).toHaveBeenCalledWith(
-      "/api/notifications/n-1/read",
-      { method: "POST" },
-    );
-    expect(
-      screen.getByLabelText(/Notifications \(1 unread\)/i),
-    ).toBeInTheDocument();
+    expect(mockedCsrfFetch).toHaveBeenCalledWith("/api/notifications/n-1/read", { method: "POST" });
+    expect(screen.getByLabelText(/Notifications \(1 unread\)/i)).toBeInTheDocument();
   });
 });

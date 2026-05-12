@@ -398,10 +398,7 @@ describe("DELETE /api/groups/[slug]/membership/[userId]", () => {
     }))!.email!;
     cookieStore.clear();
     await auth.signIn(moderatorEmail);
-    const res = await DELETE(
-      deleteReq(setup.slug, victim.id),
-      ctx(setup.slug, victim.id),
-    );
+    const res = await DELETE(deleteReq(setup.slug, victim.id), ctx(setup.slug, victim.id));
     expect(res.status).toBe(200);
     const m = await db.membership.findUnique({
       where: { userId_groupId: { userId: victim.id, groupId: group.id } },
@@ -413,10 +410,7 @@ describe("DELETE /api/groups/[slug]/membership/[userId]", () => {
     const setup = await setupGroupWithApplicant("ownerprot", true);
     cookieStore.clear();
     await auth.signIn(setup.ownerEmail);
-    const res = await DELETE(
-      deleteReq(setup.slug, setup.ownerId),
-      ctx(setup.slug, setup.ownerId),
-    );
+    const res = await DELETE(deleteReq(setup.slug, setup.ownerId), ctx(setup.slug, setup.ownerId));
     expect(res.status).toBe(409);
   });
 });
