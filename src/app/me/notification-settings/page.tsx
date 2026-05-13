@@ -42,7 +42,6 @@ export default async function NotificationSettingsPage() {
                     <Link href={`/groups/${g.slug}`} className="font-medium hover:underline">
                       {g.name}
                     </Link>
-                    <span className="font-mono text-xs text-muted-foreground">{g.slug}</span>
                   </div>
                   <NotificationPreferencesControl
                     groupId={g.id}
