@@ -26,7 +26,6 @@ export function ProfileGroupList({ items, viewer, emptyState, mutedTypesByGroupI
               <Link href={`/groups/${g.slug}`} className="font-medium hover:underline">
                 {g.name}
               </Link>
-              <span className="font-mono text-xs text-muted-foreground">{g.slug}</span>
               {g.role !== "member" ? (
                 <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {g.role}

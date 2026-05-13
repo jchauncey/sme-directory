@@ -53,8 +53,6 @@ export default async function GroupSettingsPage({ params }: Props) {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
           <p className="text-sm text-muted-foreground">
-            <span className="font-mono text-xs">{group.slug}</span>
-            {" · "}
             {group.name}
             {isArchived ? (
               <span className="ml-2 rounded-md border border-border px-1.5 py-0.5 align-middle text-[10px] font-medium uppercase tracking-wide text-muted-foreground">

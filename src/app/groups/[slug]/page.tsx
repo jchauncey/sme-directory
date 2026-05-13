@@ -81,8 +81,6 @@ export default async function GroupDetailPage({ params, searchParams }: Props) {
                   ) : null}
                 </CardTitle>
                 <CardDescription>
-                  <span className="font-mono text-xs">{group.slug}</span>
-                  {" · "}
                   <span>{memberLabel}</span>
                   {" · "}
                   <span>
