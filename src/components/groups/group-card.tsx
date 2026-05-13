@@ -27,8 +27,6 @@ export function GroupCard({ group }: { group: GroupListItem }) {
                 ) : null}
               </div>
               <CardDescription>
-                <span className="font-mono text-xs">{group.slug}</span>
-                {" · "}
                 <span>
                   {group.memberCount} {memberLabel}
                 </span>
