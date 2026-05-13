@@ -123,10 +123,7 @@ describe("castVote on questions", () => {
     const { question } = await setupGroupWithQuestion();
     const stranger = await makeUser("stranger");
 
-    const result = await castVote(
-      { targetType: "question", targetId: question.id },
-      stranger.id,
-    );
+    const result = await castVote({ targetType: "question", targetId: question.id }, stranger.id);
 
     expect(result.voted).toBe(true);
     expect(result.voteScore).toBe(1);
@@ -148,10 +145,7 @@ describe("castVote on questions", () => {
     const pending = await makeUser("pending");
     await applyToGroup(group.id, pending.id);
 
-    const result = await castVote(
-      { targetType: "question", targetId: question.id },
-      pending.id,
-    );
+    const result = await castVote({ targetType: "question", targetId: question.id }, pending.id);
 
     expect(result.voted).toBe(true);
     expect(result.voteScore).toBe(1);
@@ -165,10 +159,7 @@ describe("castVote on questions", () => {
     });
     const voter = await makeUser("archived-voter");
 
-    const result = await castVote(
-      { targetType: "question", targetId: question.id },
-      voter.id,
-    );
+    const result = await castVote({ targetType: "question", targetId: question.id }, voter.id);
 
     expect(result.voted).toBe(true);
     expect(result.voteScore).toBe(1);
