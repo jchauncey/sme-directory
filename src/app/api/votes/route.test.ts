@@ -141,14 +141,17 @@ describe("POST /api/votes", () => {
     expect(res.status).toBe(403);
   });
 
-  it("returns 403 when caller is not an approved member", async () => {
+  it("returns 200 when caller is a signed-in non-member", async () => {
     const { question } = await setupGroupWithQuestion();
     cookieStore.clear();
     await auth.signIn(`${uniq("stranger")}@example.com`);
     const res = await POST(
       jsonReq("POST", { targetType: "question", targetId: question.id, value: 1 }),
     );
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.voted).toBe(true);
+    expect(json.voteScore).toBe(1);
   });
 
   it("returns 200 with voted=true for an approved member voting on a question", async () => {

@@ -81,13 +81,8 @@ export default async function QuestionDetailPage({ params }: Props) {
   const canDeleteQuestion = currentUserId !== null && (isAuthor || isModOrOwner);
   const isEdited = question.updatedAt.getTime() > question.createdAt.getTime();
 
-  const voteDisabledReason = !currentUserId
-    ? "Sign in to vote."
-    : !isApprovedViewer
-      ? "You must be an approved member of this group to vote."
-      : undefined;
-  const questionVoteDisabled =
-    !currentUserId || !isApprovedViewer || question.author.id === currentUserId;
+  const voteDisabledReason = !currentUserId ? "Sign in to vote." : undefined;
+  const questionVoteDisabled = !currentUserId || question.author.id === currentUserId;
   const questionVoteDisabledReason =
     currentUserId && question.author.id === currentUserId
       ? "You cannot vote on your own question."
@@ -165,7 +160,7 @@ export default async function QuestionDetailPage({ params }: Props) {
             {question.answers.map((a) => {
               const isOwnAnswer = currentUserId !== null && a.author.id === currentUserId;
               const canEdit = isOwnAnswer;
-              const answerVoteDisabled = !currentUserId || !isApprovedViewer || isOwnAnswer;
+              const answerVoteDisabled = !currentUserId || isOwnAnswer;
               const answerVoteDisabledReason = isOwnAnswer
                 ? "You cannot vote on your own answer."
                 : voteDisabledReason;

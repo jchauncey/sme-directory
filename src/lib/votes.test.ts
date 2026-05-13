@@ -119,21 +119,50 @@ describe("castVote on questions", () => {
     ).rejects.toBeInstanceOf(AuthorizationError);
   });
 
-  it("rejects votes from non-members", async () => {
+  it("allows a signed-in non-member to vote", async () => {
     const { question } = await setupGroupWithQuestion();
     const stranger = await makeUser("stranger");
-    await expect(
-      castVote({ targetType: "question", targetId: question.id }, stranger.id),
-    ).rejects.toBeInstanceOf(AuthorizationError);
+
+    const result = await castVote({ targetType: "question", targetId: question.id }, stranger.id);
+
+    expect(result.voted).toBe(true);
+    expect(result.voteScore).toBe(1);
+
+    const stored = await db.vote.findUnique({
+      where: {
+        userId_targetType_targetId: {
+          userId: stranger.id,
+          targetType: "question",
+          targetId: question.id,
+        },
+      },
+    });
+    expect(stored).not.toBeNull();
   });
 
-  it("rejects votes from pending applicants", async () => {
+  it("allows a pending applicant to vote", async () => {
     const { group, question } = await setupGroupWithQuestion(false);
     const pending = await makeUser("pending");
     await applyToGroup(group.id, pending.id);
-    await expect(
-      castVote({ targetType: "question", targetId: question.id }, pending.id),
-    ).rejects.toBeInstanceOf(AuthorizationError);
+
+    const result = await castVote({ targetType: "question", targetId: question.id }, pending.id);
+
+    expect(result.voted).toBe(true);
+    expect(result.voteScore).toBe(1);
+  });
+
+  it("allows voting on a question in an archived group", async () => {
+    const { group, question } = await setupGroupWithQuestion();
+    await db.group.update({
+      where: { id: group.id },
+      data: { archivedAt: new Date() },
+    });
+    const voter = await makeUser("archived-voter");
+
+    const result = await castVote({ targetType: "question", targetId: question.id }, voter.id);
+
+    expect(result.voted).toBe(true);
+    expect(result.voteScore).toBe(1);
   });
 
   it("throws NotFoundError for unknown question id", async () => {
