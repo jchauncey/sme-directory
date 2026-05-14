@@ -126,3 +126,26 @@ describe("requireAuth", () => {
     expect(session.user.email).toBe("ok@example.com");
   });
 });
+
+describe("requireSuperAdmin", () => {
+  it("redirects to /login when there is no session", async () => {
+    await expect(auth.requireSuperAdmin()).rejects.toThrow("REDIRECT:/login");
+  });
+
+  it("404s when authenticated but not a super admin", async () => {
+    await auth.signIn("plain@example.com");
+    await expect(auth.requireSuperAdmin()).rejects.toThrow("NEXT_NOT_FOUND");
+  });
+
+  it("returns the session when the user is a super admin", async () => {
+    await auth.signIn("admin@example.com");
+    await db.user.update({
+      where: { email: "admin@example.com" },
+      data: { isSuperAdmin: true },
+    });
+    // Refresh the session cookie so the JWT picks up isSuperAdmin=true.
+    await auth.refreshSession();
+    const session = await auth.requireSuperAdmin();
+    expect(session.user.isSuperAdmin).toBe(true);
+  });
+});
