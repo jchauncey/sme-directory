@@ -88,9 +88,7 @@ describe("adminArchiveGroup / adminUnarchiveGroup", () => {
     const admin = await makeSuperAdmin();
     const { group } = await makeGroup(db);
     await adminArchiveGroup(group.slug, admin.id);
-    await expect(adminArchiveGroup(group.slug, admin.id)).rejects.toBeInstanceOf(
-      ConflictError,
-    );
+    await expect(adminArchiveGroup(group.slug, admin.id)).rejects.toBeInstanceOf(ConflictError);
   });
 });
 

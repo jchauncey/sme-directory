@@ -93,8 +93,8 @@ export function GroupRowActions({ slug, name, archived }: Props) {
           <DialogHeader>
             <DialogTitle>Delete &ldquo;{name}&rdquo; entirely?</DialogTitle>
             <DialogDescription>
-              This permanently removes the group along with every question, answer, vote,
-              favorite, and membership. This cannot be undone.
+              This permanently removes the group along with every question, answer, vote, favorite,
+              and membership. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <label className="block text-sm">

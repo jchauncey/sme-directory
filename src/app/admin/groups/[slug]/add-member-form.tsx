@@ -7,13 +7,7 @@ import { adminAddMembershipAction } from "./add-member-action";
 
 const ROLES: Role[] = ["member", "moderator", "owner"];
 
-export function AddMemberForm({
-  groupId,
-  groupSlug,
-}: {
-  groupId: string;
-  groupSlug: string;
-}) {
+export function AddMemberForm({ groupId, groupSlug }: { groupId: string; groupSlug: string }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("member");
   const [error, setError] = useState<string | null>(null);

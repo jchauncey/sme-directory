@@ -2,15 +2,7 @@ import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/auth";
 import { getAdminDashboardStats } from "@/lib/admin";
 
-function StatCard({
-  label,
-  value,
-  href,
-}: {
-  label: string;
-  value: number;
-  href?: string;
-}) {
+function StatCard({ label, value, href }: { label: string; value: number; href?: string }) {
   const inner = (
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
@@ -36,11 +28,7 @@ export default async function AdminDashboardPage() {
         <StatCard label="Super admins" value={stats.totalSuperAdmins} href="/admin/users" />
         <StatCard label="Groups" value={stats.totalGroups} href="/admin/groups" />
         <StatCard label="Archived" value={stats.archivedGroups} href="/admin/groups" />
-        <StatCard
-          label="Questions"
-          value={stats.totalQuestions}
-          href="/admin/content/questions"
-        />
+        <StatCard label="Questions" value={stats.totalQuestions} href="/admin/content/questions" />
         <StatCard label="Answers" value={stats.totalAnswers} href="/admin/content/answers" />
       </section>
 
@@ -60,7 +48,9 @@ export default async function AdminDashboardPage() {
                 <span className="font-mono text-xs text-muted-foreground">
                   {row.createdAt.toISOString()}
                 </span>{" "}
-                <span className="font-medium">{row.actorName ?? row.actorEmail ?? "(deleted)"}</span>{" "}
+                <span className="font-medium">
+                  {row.actorName ?? row.actorEmail ?? "(deleted)"}
+                </span>{" "}
                 — <span className="font-mono">{row.action}</span>{" "}
                 <span className="text-muted-foreground">
                   {row.targetType}:{row.targetId}

@@ -53,11 +53,7 @@ export default async function AdminGroupsPage({ searchParams }: Props) {
                   )}
                 </td>
                 <td className="px-3 py-2">
-                  <GroupRowActions
-                    slug={g.slug}
-                    name={g.name}
-                    archived={g.archivedAt != null}
-                  />
+                  <GroupRowActions slug={g.slug} name={g.name} archived={g.archivedAt != null} />
                 </td>
               </tr>
             ))}

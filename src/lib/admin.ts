@@ -11,9 +11,7 @@ function clampPage(value: unknown, fallback = 1): number {
 }
 
 function clampPer(value: unknown, fallback: number, max: number): number {
-  return Number.isFinite(value as number)
-    ? Math.min(Math.max(value as number, 1), max)
-    : fallback;
+  return Number.isFinite(value as number) ? Math.min(Math.max(value as number, 1), max) : fallback;
 }
 
 async function getGroupBySlugOrThrow(slug: string): Promise<Group> {
@@ -359,10 +357,7 @@ export async function adminDeleteUser(targetUserId: string, actorUserId: string)
       where: { authorId: targetUserId },
       select: { id: true },
     });
-    const contentIds = [
-      ...userQuestions.map((q) => q.id),
-      ...userAnswers.map((a) => a.id),
-    ];
+    const contentIds = [...userQuestions.map((q) => q.id), ...userAnswers.map((a) => a.id)];
     if (contentIds.length > 0) {
       await tx.vote.deleteMany({ where: { targetId: { in: contentIds } } });
       await tx.favorite.deleteMany({ where: { targetId: { in: contentIds } } });
@@ -396,10 +391,7 @@ export async function adminDeleteUser(targetUserId: string, actorUserId: string)
   });
 }
 
-export async function adminDeleteQuestion(
-  questionId: string,
-  actorUserId: string,
-): Promise<void> {
+export async function adminDeleteQuestion(questionId: string, actorUserId: string): Promise<void> {
   await assertSuperAdmin(actorUserId);
   await db.$transaction(async (tx) => {
     const question = await tx.question.findUnique({ where: { id: questionId } });
@@ -542,10 +534,7 @@ export async function listAllUsersForAdmin(opts: {
   const per = clampPer(opts.per, 25, 100);
   const where: Prisma.UserWhereInput = opts.search
     ? {
-        OR: [
-          { email: { contains: opts.search } },
-          { name: { contains: opts.search } },
-        ],
+        OR: [{ email: { contains: opts.search } }, { name: { contains: opts.search } }],
       }
     : {};
   const [users, total] = await Promise.all([
@@ -756,16 +745,23 @@ export type AdminDashboardStats = {
 };
 
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
-  const [totalUsers, totalSuperAdmins, totalGroups, archivedGroups, totalQuestions, totalAnswers, recent] =
-    await Promise.all([
-      db.user.count(),
-      db.user.count({ where: { isSuperAdmin: true } }),
-      db.group.count(),
-      db.group.count({ where: { archivedAt: { not: null } } }),
-      db.question.count({ where: { deletedAt: null } }),
-      db.answer.count(),
-      listAdminAuditLog({ page: 1, per: 10 }),
-    ]);
+  const [
+    totalUsers,
+    totalSuperAdmins,
+    totalGroups,
+    archivedGroups,
+    totalQuestions,
+    totalAnswers,
+    recent,
+  ] = await Promise.all([
+    db.user.count(),
+    db.user.count({ where: { isSuperAdmin: true } }),
+    db.group.count(),
+    db.group.count({ where: { archivedAt: { not: null } } }),
+    db.question.count({ where: { deletedAt: null } }),
+    db.answer.count(),
+    listAdminAuditLog({ page: 1, per: 10 }),
+  ]);
   return {
     totalUsers,
     totalSuperAdmins,

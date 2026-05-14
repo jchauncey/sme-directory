@@ -34,7 +34,9 @@ export async function adminAddMembershipAction(
   // Intentional disclosure: only super admins reach this code, and the admin
   // needs a specific signal so they can decide whether to invite the user.
   if (!user) {
-    return { error: mapAdminError(new NotFoundError("No user with that email."), "User not found.") };
+    return {
+      error: mapAdminError(new NotFoundError("No user with that email."), "User not found."),
+    };
   }
 
   try {

@@ -23,14 +23,7 @@ type Props = {
 const ROLE_OPTIONS: Role[] = ["member", "moderator", "owner"];
 const STATUS_OPTIONS: Status[] = ["approved", "rejected", "pending"];
 
-export function MemberRowActions({
-  groupId,
-  groupSlug,
-  userId,
-  userLabel,
-  role,
-  status,
-}: Props) {
+export function MemberRowActions({ groupId, groupSlug, userId, userLabel, role, status }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -69,12 +62,7 @@ export function MemberRowActions({
     if (!ok) return;
     startTransition(async () => {
       setError(null);
-      const result = await adminRemoveMembershipAction(
-        groupId,
-        groupSlug,
-        userId,
-        readCsrfToken(),
-      );
+      const result = await adminRemoveMembershipAction(groupId, groupSlug, userId, readCsrfToken());
       if (result.error) setError(result.error);
     });
   };

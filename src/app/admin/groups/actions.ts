@@ -3,11 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { assertCsrfToken } from "@/lib/csrf-server";
-import {
-  adminArchiveGroup,
-  adminDeleteGroup,
-  adminUnarchiveGroup,
-} from "@/lib/admin";
+import { adminArchiveGroup, adminDeleteGroup, adminUnarchiveGroup } from "@/lib/admin";
 import { mapAdminError } from "../error-map";
 
 export type AdminActionResult = { error?: string; ok?: true };

@@ -2,11 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { readCsrfToken } from "@/lib/csrf-client";
-import {
-  adminDeleteUserAction,
-  adminDemoteUserAction,
-  adminPromoteUserAction,
-} from "./actions";
+import { adminDeleteUserAction, adminDemoteUserAction, adminPromoteUserAction } from "./actions";
 
 type Props = {
   userId: string;
