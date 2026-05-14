@@ -37,6 +37,7 @@ model User {
   name          String?
   image         String?
   bio           String?
+  isSuperAdmin  Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -48,6 +49,7 @@ model User {
   notifications           Notification[]
   notificationPreferences NotificationPreference[]
   createdGroups           Group[]                  @relation("GroupCreator")
+  adminActions            AdminAuditLog[]
 }
 
 model Group {
@@ -183,4 +185,22 @@ model NotificationPreference {
 
   @@unique([userId, groupId])
   @@index([groupId])
+}
+
+// metadata is JSON-as-string for SQLite portability — same convention as Notification.payload.
+// actorId is nullable + SetNull so the audit trail survives if a super admin is later deleted.
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String
+  targetId   String
+  metadata   String   @default("{}")
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
+  @@index([createdAt])
 }

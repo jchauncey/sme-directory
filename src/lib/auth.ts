@@ -1,6 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { SignJWT, jwtVerify } from "jose";
 import { db } from "@/lib/db";
 import { CSRF_COOKIE, generateCsrfToken } from "@/lib/csrf";
@@ -11,6 +11,7 @@ export type Session = {
     email: string;
     name: string | null;
     image: string | null;
+    isSuperAdmin: boolean;
   };
 };
 
@@ -37,6 +38,7 @@ async function mintToken(session: Session): Promise<string> {
     email: session.user.email,
     name: session.user.name,
     image: session.user.image,
+    isSuperAdmin: session.user.isSuperAdmin,
   })
     .setProtectedHeader({ alg: ALG })
     .setSubject(session.user.id)
@@ -57,6 +59,7 @@ async function readToken(token: string): Promise<Session | null> {
         email: payload.email,
         name: typeof payload.name === "string" ? payload.name : null,
         image: typeof payload.image === "string" ? payload.image : null,
+        isSuperAdmin: payload.isSuperAdmin === true,
       },
     };
   } catch {
@@ -103,6 +106,17 @@ export async function requireAuth(): Promise<Session> {
   return session;
 }
 
+// Page guard for /admin routes. 404 rather than 403 so the surface isn't
+// advertised to non-admins. Server actions must still call assertSuperAdmin
+// from src/lib/admin-auth.ts — the session JWT can be stale after a demotion.
+export async function requireSuperAdmin(): Promise<Session> {
+  const session = await requireAuth();
+  if (!session.user.isSuperAdmin) {
+    notFound();
+  }
+  return session;
+}
+
 export async function signIn(email: string): Promise<Session> {
   if (isProduction()) {
     throw new Error(
@@ -119,7 +133,13 @@ export async function signIn(email: string): Promise<Session> {
     create: { email: normalized },
   });
   const session: Session = {
-    user: { id: user.id, email: normalized, name: user.name, image: user.image },
+    user: {
+      id: user.id,
+      email: normalized,
+      name: user.name,
+      image: user.image,
+      isSuperAdmin: user.isSuperAdmin,
+    },
   };
   await writeSessionCookie(session);
   return session;
@@ -131,7 +151,13 @@ export async function refreshSession(): Promise<Session | null> {
   const user = await db.user.findUnique({ where: { id: current.user.id } });
   if (!user || !user.email) return current;
   const next: Session = {
-    user: { id: user.id, email: user.email, name: user.name, image: user.image },
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      image: user.image,
+      isSuperAdmin: user.isSuperAdmin,
+    },
   };
   await writeSessionCookie(next);
   return next;

@@ -66,6 +66,9 @@ export function UserMenu() {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem render={<Link href="/me" />}>Your profile</DropdownMenuItem>
+        {user?.isSuperAdmin ? (
+          <DropdownMenuItem render={<Link href="/admin" />}>Admin</DropdownMenuItem>
+        ) : null}
         <DropdownMenuSeparator />
         <form action={signOutAction}>
           <CsrfField />

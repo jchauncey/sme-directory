@@ -1313,12 +1313,17 @@ const notifications: SeedNotification[] = (() => {
   return out;
 })();
 
+// Dev super admin. In production, bootstrap by running:
+//   UPDATE "User" SET "isSuperAdmin" = true WHERE email = '<your-admin@domain>';
+const SUPER_ADMIN_SEED_USER_ID = "seed-user-alice";
+
 async function main() {
   for (const u of users) {
+    const isSuperAdmin = u.id === SUPER_ADMIN_SEED_USER_ID;
     await prisma.user.upsert({
       where: { id: u.id },
-      create: { id: u.id, email: u.email, name: u.name },
-      update: { email: u.email, name: u.name },
+      create: { id: u.id, email: u.email, name: u.name, isSuperAdmin },
+      update: { email: u.email, name: u.name, isSuperAdmin },
     });
   }
 

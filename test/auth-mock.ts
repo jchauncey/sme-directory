@@ -39,6 +39,9 @@ export function nextNavigationMock() {
     redirect: (url: string) => {
       throw new Error(`REDIRECT:${url}`);
     },
+    notFound: () => {
+      throw new Error("NEXT_NOT_FOUND");
+    },
   };
 }
 
@@ -52,6 +55,7 @@ export type SessionUser = {
   email: string;
   name?: string | null;
   image?: string | null;
+  isSuperAdmin?: boolean;
 };
 
 /**
@@ -69,6 +73,7 @@ export async function setSessionUser(user: SessionUser): Promise<void> {
     email: user.email,
     name: user.name ?? null,
     image: user.image ?? null,
+    isSuperAdmin: user.isSuperAdmin === true,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(user.id)
