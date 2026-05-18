@@ -33,10 +33,20 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
+const { rateLimitMock } = vi.hoisted(() => ({ rateLimitMock: vi.fn() }));
+vi.mock("@/lib/rate-limit", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/rate-limit")>("@/lib/rate-limit");
+  return {
+    ...actual,
+    assertRateLimitForAction: rateLimitMock,
+  };
+});
+
 const auth = await import("@/lib/auth");
 const { db } = await import("@/lib/db");
 const { createGroup } = await import("@/lib/groups");
 const { applyToGroup } = await import("@/lib/memberships");
+const { RateLimitError } = await import("@/lib/rate-limit");
 const { POST } = await import("./route");
 
 beforeAll(async () => {
@@ -62,6 +72,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   cookieStore.clear();
+  rateLimitMock.mockReset();
 });
 
 function jsonReq(method: string, body?: unknown, raw?: string): Request {
@@ -195,6 +206,26 @@ describe("POST /api/votes", () => {
     expect(json.voted).toBe(true);
     expect(json.voteScore).toBe(1);
     expect(json.targetType).toBe("answer");
+  });
+
+  it("returns 429 with Retry-After header when rate-limited", async () => {
+    const { group, question } = await setupGroupWithQuestion();
+    cookieStore.clear();
+    await auth.signIn(`${uniq("rl")}@example.com`);
+    const sess = (await auth.getSession())!;
+    await applyToGroup(group.id, sess.user.id);
+
+    rateLimitMock.mockRejectedValueOnce(new RateLimitError(2500));
+
+    const res = await POST(
+      jsonReq("POST", { targetType: "question", targetId: question.id, value: 1 }),
+    );
+    expect(res.status).toBe(429);
+    expect(res.headers.get("Retry-After")).toBe("3");
+    const json = await res.json();
+    expect(json.error).toBe("RateLimited");
+    expect(json.message).toMatch(/Too many votes/);
+    expect(json.message).toMatch(/3 seconds/);
   });
 
   it("toggles off on second call and returns voted=false", async () => {
