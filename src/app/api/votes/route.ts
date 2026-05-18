@@ -30,10 +30,7 @@ export async function POST(req: Request): Promise<Response> {
   } catch (err) {
     if (err instanceof RateLimitError) {
       const seconds = Math.max(1, Math.ceil(err.retryAfterMs / 1000));
-      return rateLimited(
-        err.retryAfterMs,
-        `Too many votes. Try again in ${seconds} seconds.`,
-      );
+      return rateLimited(err.retryAfterMs, `Too many votes. Try again in ${seconds} seconds.`);
     }
     throw err;
   }
