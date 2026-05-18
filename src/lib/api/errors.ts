@@ -25,6 +25,28 @@ export function validationFailed(err: z.ZodError): Response {
   );
 }
 
+/**
+ * Canonical 429 response shape for rate-limited API routes.
+ *
+ * `retryAfterMs` is rounded up to the next whole second (floor of 1s) and
+ * surfaced in both the `Retry-After` header and — implicitly — in the
+ * caller-supplied `message`, which should mention the same delay.
+ *
+ * Keep this aligned with the proxy's 429 in `@/lib/rate-limit`; they share the
+ * same `{ error: "RateLimited", message }` body and `Retry-After` header so
+ * clients can branch on a single shape regardless of which layer rejected them.
+ */
+export function rateLimited(
+  retryAfterMs: number,
+  message = "Too many requests. Try again shortly.",
+): Response {
+  const seconds = Math.max(1, Math.ceil(retryAfterMs / 1000));
+  return Response.json(
+    { error: "RateLimited", message },
+    { status: 429, headers: { "Retry-After": String(seconds) } },
+  );
+}
+
 export function errorToResponse(err: unknown): Response {
   if (err instanceof SlugConflictError) {
     return Response.json(
